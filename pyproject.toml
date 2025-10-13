@@ -1,0 +1,33 @@
+[project]
+name = "geo-rota"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "Lucas Alves",email = "lucasalves.comp@gmail.com"}
+]
+readme = "README.md"
+requires-python = ">=3.11,<4.0"
+dependencies = [
+    "fastapi (>=0.119.0,<0.120.0)",
+    "uvicorn[standard] (>=0.37.0,<0.38.0)",
+    "pydantic[email] (>=2.12.0,<3.0.0)",
+    "geopy (>=2.4.1,<3.0.0)",
+    "ortools (>=9.14.6206,<10.0.0)",
+    "sqlalchemy (>=2.0.44,<3.0.0)",
+    "pydantic-settings (>=2.11.0,<3.0.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.4.2"
+httpx = "^0.28.1"
+black = "^25.9.0"
+isort = "^7.0.0"
+taskipy = "^1.14.1"
+
+[tool.taskipy.tasks]
+run = 'uvicorn geo_rota.main:app --reload'
