@@ -14,6 +14,7 @@ from geo_rota.models import (
     Veiculo,
     DisponibilidadeVeiculo,
     IndisponibilidadeFuncionario,
+    Usuario,
 )
 from geo_rota.models.enums import (
     TurnoTrabalhoEnum,
@@ -21,8 +22,10 @@ from geo_rota.models.enums import (
     CategoriaCustoVeiculo,
     TipoDisponibilidadeVeiculoEnum,
     TipoIndisponibilidadeEnum,
+    RoleEnum,
 )
 from geo_rota.models.model_base import Base
+from geo_rota.core.security import get_password_hash
 
 
 # -----------------------------
@@ -44,6 +47,24 @@ def get_or_create(session: Session, model, defaults=None, **filters):
 # -----------------------------
 # Seeds
 # -----------------------------
+def seed_usuario_admin(session: Session) -> Usuario:
+    admin_email = "admin@geo-rota.local"
+    usuario = session.query(Usuario).filter_by(email=admin_email).first()
+    if usuario:
+        return usuario
+
+    usuario = Usuario(
+        nome="Administrador GeoRota",
+        email=admin_email,
+        hashed_password=get_password_hash("admin123"),
+        role=RoleEnum.ADMIN,
+        is_active=True,
+    )
+    session.add(usuario)
+    session.flush()
+    return usuario
+
+
 def seed_empresa(session: Session) -> Empresa:
     empresa = session.query(Empresa).filter_by(codigo="GEO001").first()
     if not empresa:
@@ -265,6 +286,7 @@ def run_seed():
     Base.metadata.create_all(bind=engine)
     session = SessionLocal()
     try:
+        seed_usuario_admin(session)
         empresa = seed_empresa(session)
         funcionarios = seed_funcionarios(session, empresa)
         seed_escalas(session, funcionarios)
@@ -274,7 +296,7 @@ def run_seed():
         seed_disponibilidades(session, grupo, veiculos)
         seed_indisponibilidades(session, funcionarios)
         session.commit()
-        print("✅ Base de dados atualizada! Use /rotas/gerar para validar rotas e indisponibilidades.")
+        print("Base de dados atualizada! Login admin@geo-rota.local / admin123. Use /rotas/gerar para validar rotas.")
     except Exception as exc:
         session.rollback()
         raise RuntimeError("Falha ao popular base de dados") from exc

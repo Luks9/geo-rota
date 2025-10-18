@@ -40,3 +40,4 @@ from geo_rota.schemas.vehicle import (  # noqa: F401
     VeiculoRead,
     VeiculoUpdate,
 )
+from geo_rota.schemas.user import Token, TokenPayload, UserCreate, UserRead, UserUpdate  # noqa: F401

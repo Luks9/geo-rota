@@ -1,0 +1,40 @@
+from typing import Optional
+
+from pydantic import BaseModel, EmailStr, Field
+
+from geo_rota.models.enums import RoleEnum
+
+
+class UserBase(BaseModel):
+    nome: str = Field(..., max_length=150)
+    email: EmailStr
+    role: RoleEnum = RoleEnum.USER
+
+
+class UserCreate(UserBase):
+    senha: str = Field(..., min_length=6, max_length=128)
+    role: RoleEnum = RoleEnum.USER
+
+
+class UserUpdate(BaseModel):
+    nome: Optional[str] = Field(default=None, max_length=150)
+    senha: Optional[str] = Field(default=None, min_length=6, max_length=128)
+    role: Optional[RoleEnum] = None
+    is_active: Optional[bool] = None
+
+
+class UserRead(UserBase):
+    id: int
+    is_active: bool
+
+    class Config:
+        orm_mode = True
+
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+
+class TokenPayload(BaseModel):
+    sub: Optional[str] = None

@@ -14,3 +14,4 @@ from geo_rota.models.route_group import GrupoRota  # noqa: F401
 from geo_rota.models.vehicle import Veiculo  # noqa: F401
 from geo_rota.models.vehicle_availability import DisponibilidadeVeiculo  # noqa: F401
 from geo_rota.models.work_schedule import EscalaTrabalho  # noqa: F401
+from geo_rota.models.user import Usuario  # noqa: F401

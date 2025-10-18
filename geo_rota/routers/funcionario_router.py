@@ -3,7 +3,9 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
+from geo_rota.core.auth import get_current_active_user, require_admin
 from geo_rota.core.database import get_db
+from geo_rota.models.user import Usuario
 from geo_rota.schemas import (
     EscalaTrabalhoCreate,
     EscalaTrabalhoRead,
@@ -31,11 +33,19 @@ from geo_rota.services import (
     remover_escala_trabalho,
 )
 
-router = APIRouter(prefix="/funcionarios", tags=["Funcionários"])
+router = APIRouter(
+    prefix="/funcionarios",
+    tags=["Funcionarios"],
+    dependencies=[Depends(get_current_active_user)],
+)
 
 
 @router.post("/", response_model=FuncionarioRead, status_code=status.HTTP_201_CREATED)
-def criar(dados: FuncionarioCreate, db: Session = Depends(get_db)) -> FuncionarioRead:
+def criar(
+    dados: FuncionarioCreate,
+    _: Usuario = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> FuncionarioRead:
     return criar_funcionario(db, dados)
 
 
@@ -56,7 +66,12 @@ def obter(funcionario_id: int, db: Session = Depends(get_db)) -> FuncionarioComD
 
 
 @router.put("/{funcionario_id}", response_model=FuncionarioRead)
-def atualizar(funcionario_id: int, dados: FuncionarioUpdate, db: Session = Depends(get_db)) -> FuncionarioRead:
+def atualizar(
+    funcionario_id: int,
+    dados: FuncionarioUpdate,
+    _: Usuario = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> FuncionarioRead:
     funcionario = atualizar_funcionario(db, funcionario_id, dados)
     if not funcionario:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Funcionário não encontrado")
@@ -64,7 +79,11 @@ def atualizar(funcionario_id: int, dados: FuncionarioUpdate, db: Session = Depen
 
 
 @router.delete("/{funcionario_id}", status_code=status.HTTP_204_NO_CONTENT)
-def desativar(funcionario_id: int, db: Session = Depends(get_db)) -> None:
+def desativar(
+    funcionario_id: int,
+    _: Usuario = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> None:
     sucesso = inativar_funcionario(db, funcionario_id)
     if not sucesso:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Funcionário não encontrado")
@@ -78,6 +97,7 @@ def desativar(funcionario_id: int, db: Session = Depends(get_db)) -> None:
 def criar_escala(
     funcionario_id: int,
     payload: EscalaTrabalhoCreate,
+    _: Usuario = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> EscalaTrabalhoRead:
     dados = payload.dict()
@@ -89,6 +109,7 @@ def criar_escala(
 def atualizar_escala(
     escala_id: int,
     dados: EscalaTrabalhoUpdate,
+    _: Usuario = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> EscalaTrabalhoRead:
     escala = atualizar_escala_trabalho(db, escala_id, dados)
@@ -98,7 +119,11 @@ def atualizar_escala(
 
 
 @router.delete("/escalas/{escala_id}", status_code=status.HTTP_204_NO_CONTENT)
-def remover_escala(escala_id: int, db: Session = Depends(get_db)) -> None:
+def remover_escala(
+    escala_id: int,
+    _: Usuario = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> None:
     removido = remover_escala_trabalho(db, escala_id)
     if not removido:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Escala não encontrada")
@@ -123,6 +148,7 @@ def listar_indisponibilidades_funcionario(
 def criar_indisponibilidade(
     funcionario_id: int,
     payload: IndisponibilidadeFuncionarioCreate,
+    _: Usuario = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> IndisponibilidadeFuncionarioRead:
     dados = payload.dict()
@@ -137,6 +163,7 @@ def criar_indisponibilidade(
 def atualizar_indisponibilidade_funcionario(
     indisponibilidade_id: int,
     dados: IndisponibilidadeFuncionarioUpdate,
+    _: Usuario = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> IndisponibilidadeFuncionarioRead:
     indisponibilidade = atualizar_indisponibilidade(db, indisponibilidade_id, dados)
@@ -146,7 +173,11 @@ def atualizar_indisponibilidade_funcionario(
 
 
 @router.delete("/indisponibilidades/{indisponibilidade_id}", status_code=status.HTTP_204_NO_CONTENT)
-def remover_indisponibilidade_funcionario(indisponibilidade_id: int, db: Session = Depends(get_db)) -> None:
+def remover_indisponibilidade_funcionario(
+    indisponibilidade_id: int,
+    _: Usuario = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> None:
     removido = remover_indisponibilidade(db, indisponibilidade_id)
     if not removido:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Indisponibilidade não encontrada")

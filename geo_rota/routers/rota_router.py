@@ -5,7 +5,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from geo_rota.core.auth import get_current_active_user, require_admin
 from geo_rota.core.database import get_db
+from geo_rota.models.user import Usuario
 from geo_rota.schemas import (
     AtribuicaoRotaCreate,
     AtribuicaoRotaRead,
@@ -57,16 +59,28 @@ class LogErroCreate(BaseModel):
     detalhes: Optional[str] = None
 
 
-router = APIRouter(prefix="/rotas", tags=["Rotas"])
+router = APIRouter(
+    prefix="/rotas",
+    tags=["Rotas"],
+    dependencies=[Depends(get_current_active_user)],
+)
 
 
 @router.post("/", response_model=RotaRead, status_code=status.HTTP_201_CREATED)
-def criar(dados: RotaCreate, db: Session = Depends(get_db)) -> RotaRead:
+def criar(
+    dados: RotaCreate,
+    _: Usuario = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> RotaRead:
     return criar_rota(db, dados)
 
 
 @router.post("/gerar", response_model=RotaRead, status_code=status.HTTP_201_CREATED)
-def gerar_rota(request: RequisicaoGerarRota, db: Session = Depends(get_db)) -> RotaRead:
+def gerar_rota(
+    request: RequisicaoGerarRota,
+    _: Usuario = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> RotaRead:
     try:
         return gerar_rota_automatica(db, request)
     except CapacidadeVeiculoInsuficienteError as exc:
@@ -96,7 +110,12 @@ def obter(rota_id: int, db: Session = Depends(get_db)) -> RotaRead:
 
 
 @router.put("/{rota_id}", response_model=RotaRead)
-def atualizar(rota_id: int, dados: RotaUpdate, db: Session = Depends(get_db)) -> RotaRead:
+def atualizar(
+    rota_id: int,
+    dados: RotaUpdate,
+    _: Usuario = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> RotaRead:
     rota = atualizar_rota(db, rota_id, dados)
     if not rota:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Rota não encontrada")
@@ -104,7 +123,11 @@ def atualizar(rota_id: int, dados: RotaUpdate, db: Session = Depends(get_db)) ->
 
 
 @router.delete("/{rota_id}", status_code=status.HTTP_204_NO_CONTENT)
-def remover(rota_id: int, db: Session = Depends(get_db)) -> None:
+def remover(
+    rota_id: int,
+    _: Usuario = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> None:
     removida = remover_rota(db, rota_id)
     if not removida:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Rota não encontrada")
@@ -118,6 +141,7 @@ def remover(rota_id: int, db: Session = Depends(get_db)) -> None:
 def atribuir(
     rota_id: int,
     payload: AtribuicaoRotaCreate,
+    _: Usuario = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> AtribuicaoRotaRead:
     dados = payload.dict()
@@ -126,7 +150,11 @@ def atribuir(
 
 
 @router.delete("/atribuicoes/{atribuicao_id}", status_code=status.HTTP_204_NO_CONTENT)
-def remover_atribuicao_rota(atribuicao_id: int, db: Session = Depends(get_db)) -> None:
+def remover_atribuicao_rota(
+    atribuicao_id: int,
+    _: Usuario = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> None:
     removida = remover_atribuicao(db, atribuicao_id)
     if not removida:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Atribuição não encontrada")
@@ -140,6 +168,7 @@ def remover_atribuicao_rota(atribuicao_id: int, db: Session = Depends(get_db)) -
 def registrar_pendente(
     rota_id: int,
     payload: FuncionarioPendenteRotaCreate,
+    _: Usuario = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> FuncionarioPendenteRotaRead:
     dados = payload.dict()
@@ -148,7 +177,11 @@ def registrar_pendente(
 
 
 @router.delete("/pendencias/{pendente_id}", status_code=status.HTTP_204_NO_CONTENT)
-def remover_pendente(pendente_id: int, db: Session = Depends(get_db)) -> None:
+def remover_pendente(
+    pendente_id: int,
+    _: Usuario = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> None:
     removido = remover_funcionario_pendente(db, pendente_id)
     if not removido:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pendência não encontrada")
@@ -162,6 +195,7 @@ def remover_pendente(pendente_id: int, db: Session = Depends(get_db)) -> None:
 def registrar_log_de_geracao(
     rota_id: int,
     payload: LogGeracaoCreate,
+    _: Usuario = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> LogGeracaoRotaRead:
     return registrar_log_geracao(
@@ -182,6 +216,7 @@ def registrar_log_de_geracao(
 def registrar_log_admin(
     rota_id: int,
     payload: LogAdministrativoCreate,
+    _: Usuario = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> LogAdministrativoRead:
     return registrar_log_administrativo(
@@ -198,7 +233,11 @@ def registrar_log_admin(
     response_model=LogErroRotaRead,
     status_code=status.HTTP_201_CREATED,
 )
-def registrar_log_erro_rota(payload: LogErroCreate, db: Session = Depends(get_db)) -> LogErroRotaRead:
+def registrar_log_erro_rota(
+    payload: LogErroCreate,
+    _: Usuario = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> LogErroRotaRead:
     return registrar_log_erro(
         db,
         contexto=payload.contexto,

@@ -59,13 +59,6 @@ node_modules/
 .yarn-debug.log*
 .yarn-error.log*
 
-frontend/xml/node_modules/
-frontend/xml/.env 
-frontend/xml/build/
-frontend/xml/.cache/  
-frontend/xml/.pnp
-frontend/xml/.pnp.js
-frontend/xml/pnpm-lock.yaml
 
 # IDEs e ferramentas
 .idea/
@@ -83,3 +76,11 @@ temp/
 # certificates
 *.pem
 *.pfx
+
+frontend/geo-rota/node_modules/
+frontend/geo-rota/.env 
+frontend/geo-rota/build/
+frontend/geo-rota/.cache/  
+frontend/geo-rota/.pnp
+frontend/geo-rota/.pnp.js
+frontend/geo-rota/pnpm-lock.yaml

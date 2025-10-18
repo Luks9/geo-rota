@@ -54,3 +54,10 @@ from geo_rota.services.veiculo_service import (  # noqa: F401
     remover_disponibilidade,
     remover_veiculo,
 )
+from geo_rota.services.user_service import (  # noqa: F401
+    authenticate_user,
+    create_user,
+    get_user_by_email,
+    get_user_by_id,
+    update_user,
+)

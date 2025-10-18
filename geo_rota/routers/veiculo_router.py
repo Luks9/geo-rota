@@ -4,7 +4,9 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
+from geo_rota.core.auth import get_current_active_user, require_admin
 from geo_rota.core.database import get_db
+from geo_rota.models.user import Usuario
 from geo_rota.schemas import (
     DisponibilidadeVeiculoCreate,
     DisponibilidadeVeiculoRead,
@@ -25,11 +27,19 @@ from geo_rota.services import (
     remover_veiculo,
 )
 
-router = APIRouter(prefix="/veiculos", tags=["Veículos"])
+router = APIRouter(
+    prefix="/veiculos",
+    tags=["Veiculos"],
+    dependencies=[Depends(get_current_active_user)],
+)
 
 
 @router.post("/", response_model=VeiculoRead, status_code=status.HTTP_201_CREATED)
-def criar(dados: VeiculoCreate, db: Session = Depends(get_db)) -> VeiculoRead:
+def criar(
+    dados: VeiculoCreate,
+    _: Usuario = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> VeiculoRead:
     return criar_veiculo(db, dados)
 
 
@@ -51,7 +61,12 @@ def obter(veiculo_id: int, db: Session = Depends(get_db)) -> VeiculoRead:
 
 
 @router.put("/{veiculo_id}", response_model=VeiculoRead)
-def atualizar(veiculo_id: int, dados: VeiculoUpdate, db: Session = Depends(get_db)) -> VeiculoRead:
+def atualizar(
+    veiculo_id: int,
+    dados: VeiculoUpdate,
+    _: Usuario = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> VeiculoRead:
     veiculo = atualizar_veiculo(db, veiculo_id, dados)
     if not veiculo:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Veículo não encontrado")
@@ -59,7 +74,11 @@ def atualizar(veiculo_id: int, dados: VeiculoUpdate, db: Session = Depends(get_d
 
 
 @router.delete("/{veiculo_id}", status_code=status.HTTP_204_NO_CONTENT)
-def remover(veiculo_id: int, db: Session = Depends(get_db)) -> None:
+def remover(
+    veiculo_id: int,
+    _: Usuario = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> None:
     removido = remover_veiculo(db, veiculo_id)
     if not removido:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Veículo não encontrado")
@@ -73,6 +92,7 @@ def remover(veiculo_id: int, db: Session = Depends(get_db)) -> None:
 def cadastrar_disponibilidade_veiculo(
     veiculo_id: int,
     payload: DisponibilidadeVeiculoCreate,
+    _: Usuario = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> DisponibilidadeVeiculoRead:
     dados = payload.dict()
@@ -96,6 +116,7 @@ def listar_disponibilidades_veiculo(
 def atualizar_disponibilidade_veiculo(
     disponibilidade_id: int,
     dados: DisponibilidadeVeiculoUpdate,
+    _: Usuario = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> DisponibilidadeVeiculoRead:
     disponibilidade = atualizar_disponibilidade(db, disponibilidade_id, dados)
@@ -105,7 +126,11 @@ def atualizar_disponibilidade_veiculo(
 
 
 @router.delete("/disponibilidades/{disponibilidade_id}", status_code=status.HTTP_204_NO_CONTENT)
-def remover_disponibilidade_veiculo(disponibilidade_id: int, db: Session = Depends(get_db)) -> None:
+def remover_disponibilidade_veiculo(
+    disponibilidade_id: int,
+    _: Usuario = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> None:
     removido = remover_disponibilidade(db, disponibilidade_id)
     if not removido:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Disponibilidade não encontrada")

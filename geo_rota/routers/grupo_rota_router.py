@@ -3,7 +3,9 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
+from geo_rota.core.auth import get_current_active_user, require_admin
 from geo_rota.core.database import get_db
+from geo_rota.models.user import Usuario
 from geo_rota.schemas import (
     FuncionarioGrupoRotaCreate,
     FuncionarioGrupoRotaRead,
@@ -21,11 +23,19 @@ from geo_rota.services import (
     vincular_funcionario_grupo,
 )
 
-router = APIRouter(prefix="/grupos-rota", tags=["Grupos de Rota"])
+router = APIRouter(
+    prefix="/grupos-rota",
+    tags=["Grupos de Rota"],
+    dependencies=[Depends(get_current_active_user)],
+)
 
 
 @router.post("/", response_model=GrupoRotaRead, status_code=status.HTTP_201_CREATED)
-def criar(dados: GrupoRotaCreate, db: Session = Depends(get_db)) -> GrupoRotaRead:
+def criar(
+    dados: GrupoRotaCreate,
+    _: Usuario = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> GrupoRotaRead:
     return criar_grupo_rota(db, dados)
 
 
@@ -46,7 +56,12 @@ def obter(grupo_id: int, db: Session = Depends(get_db)) -> GrupoRotaRead:
 
 
 @router.put("/{grupo_id}", response_model=GrupoRotaRead)
-def atualizar(grupo_id: int, dados: GrupoRotaUpdate, db: Session = Depends(get_db)) -> GrupoRotaRead:
+def atualizar(
+    grupo_id: int,
+    dados: GrupoRotaUpdate,
+    _: Usuario = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> GrupoRotaRead:
     grupo = atualizar_grupo_rota(db, grupo_id, dados)
     if not grupo:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Grupo de rota não encontrado")
@@ -54,7 +69,11 @@ def atualizar(grupo_id: int, dados: GrupoRotaUpdate, db: Session = Depends(get_d
 
 
 @router.delete("/{grupo_id}", status_code=status.HTTP_204_NO_CONTENT)
-def remover(grupo_id: int, db: Session = Depends(get_db)) -> None:
+def remover(
+    grupo_id: int,
+    _: Usuario = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> None:
     removido = remover_grupo_rota(db, grupo_id)
     if not removido:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Grupo de rota não encontrado")
@@ -68,6 +87,7 @@ def remover(grupo_id: int, db: Session = Depends(get_db)) -> None:
 def vincular_funcionario(
     grupo_id: int,
     payload: FuncionarioGrupoRotaCreate,
+    _: Usuario = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> FuncionarioGrupoRotaRead:
     dados = payload.dict()
@@ -76,7 +96,11 @@ def vincular_funcionario(
 
 
 @router.delete("/vinculos/{vinculo_id}", status_code=status.HTTP_204_NO_CONTENT)
-def remover_vinculo(vinculo_id: int, db: Session = Depends(get_db)) -> None:
+def remover_vinculo(
+    vinculo_id: int,
+    _: Usuario = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> None:
     removido = remover_vinculo_funcionario_grupo(db, vinculo_id)
     if not removido:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Vínculo não encontrado")

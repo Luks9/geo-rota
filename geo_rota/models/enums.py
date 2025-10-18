@@ -48,3 +48,8 @@ class PapelAtribuicaoRota(str, Enum):
 class ModoAlgoritmoEnum(str, Enum):
     MANUAL = "manual"
     AUTOMATICO = "automatico"
+
+
+class RoleEnum(str, Enum):
+    ADMIN = "admin"
+    USER = "user"
