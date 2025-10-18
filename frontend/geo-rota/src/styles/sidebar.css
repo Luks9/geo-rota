@@ -1,6 +1,6 @@
 /* Sidebar */
 .sidebar {
-  width: 240px;
+  width: 208px;
   height: 100vh;
   background: linear-gradient(145deg, #1f64a9, #012140);
   padding: 1rem;
@@ -16,7 +16,7 @@
 }
 
 .sidebar:hover {
-  width: 250px;
+  width: 220px;
 }
 
 /* Sidebar Content */
@@ -43,7 +43,7 @@
   margin-bottom: 0.5rem;
 }
 
-/* Menu Links */
+/* Menu Links and Buttons */
 .menu-list li a,
 .menu-list li button {
   display: flex;
@@ -70,20 +70,48 @@
   transform: translateX(5px);
 }
 
-.menu-list li a.active {
+.menu-list > li > a.active {
   background: linear-gradient(145deg, #0078ff, #005bbf);
   color: #ffffff;
   font-weight: bold;
 }
 
-/* Submenu */
+/* Submenu (hierarchy styling) */
 .menu-list .submenu {
-  padding-left: 1rem;
+  padding-left: 1.25rem;
   margin-top: 0.25rem;
-  transition: max-height 0.3s ease;
+  transition: max-height 0.3s ease, opacity 0.3s ease;
   overflow: hidden;
+  font-size: 0.85rem; /* menor */
+  opacity: 0.9;
 }
 
+.menu-list .submenu li {
+  margin-bottom: 0.25rem;
+}
+
+.menu-list .submenu li a {
+  padding: 0.35rem 1rem;
+  border-radius: 6px;
+  color: #cfd4da;
+  background: transparent;
+  font-weight: 500;
+  transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+.menu-list .submenu li a:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  transform: translateX(4px);
+}
+
+.menu-list .submenu li a.active {
+  background: linear-gradient(145deg, #0078ff, #005bbf);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+/* Submenu transitions */
 .menu-list .submenu.collapsed {
   max-height: 0;
   opacity: 0;
@@ -91,5 +119,17 @@
 
 .menu-list .submenu.expanded {
   max-height: 1000px;
+  opacity: 1;
+}
+
+/* Arrow indicators */
+.submenu-arrow {
+  font-size: 0.8rem;
+  opacity: 0.8;
+  transition: transform 0.2s ease;
+}
+
+.menu-list li button.active .submenu-arrow {
+  transform: rotate(90deg);
   opacity: 1;
 }

@@ -1,20 +1,16 @@
-import type { ReactNode } from 'react'
+import { Outlet } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import Topbar from './Topbar'
 import '../styles/layout.css'
 
-type AppLayoutProps = {
-  children: ReactNode
-}
-
-function AppLayout({ children }: AppLayoutProps) {
+function AppLayout() {
   return (
     <div className="app-shell">
       <Sidebar />
       <div className="app-main">
         <Topbar />
         <main className="app-content">
-          <div className="container">{children}</div>
+          <Outlet />
         </main>
       </div>
     </div>

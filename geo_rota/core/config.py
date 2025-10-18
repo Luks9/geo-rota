@@ -1,3 +1,5 @@
+from typing import List
+
 from pydantic_settings  import BaseSettings
 
 class Settings(BaseSettings):
@@ -9,15 +11,9 @@ class Settings(BaseSettings):
     DEBUG: bool = True
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     ALGORITHM: str = "HS256"
+    ALLOWED_ORIGINS: List[str] = ["http://localhost:5173"]
 
     class Config:
         env_file = ".env"
 
 settings = Settings()
-{
-  "empresa_id": 1,
-  "grupo_rota_id": 1,
-  "data_agendada": "2025-10-15",
-  "turno": "MANHA",
-  "modo_geracao": "automatico"
-}

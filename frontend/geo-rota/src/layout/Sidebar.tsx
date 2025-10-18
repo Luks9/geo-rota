@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 import '../styles/sidebar.css'
 
 type MenuLeaf = {
@@ -22,26 +22,25 @@ const sections: MenuSection[] = [
   {
     label: 'Principal',
     items: [
-      { label: 'Visao geral', to: '/' },
+      { label: 'Visão geral', to: '/' },
       {
-        label: 'Rotas',
-        to: '/rotas',
+        label: 'Cadastro',
+        to: '/cadastro',
         children: [
-          { label: 'Listar rotas', to: '/rotas/lista' },
-          { label: 'Planejamento', to: '/rotas/planejamento' },
+          { label: 'Funcionários', to: '/cadastro/funcionarios' },
         ],
       },
     ],
   },
   {
-    label: 'Configuracoes',
+    label: 'Configurações',
     items: [
       {
         label: 'Equipe',
         to: '/configuracoes',
         children: [
           { label: 'Motoristas', to: '/configuracoes/motoristas' },
-          { label: 'Veiculos', to: '/configuracoes/veiculos' },
+          { label: 'Veículos', to: '/configuracoes/veiculos' },
         ],
       },
     ],
@@ -50,15 +49,16 @@ const sections: MenuSection[] = [
 
 function Sidebar() {
   const location = useLocation()
-  const navigate = useNavigate()
   const [openItems, setOpenItems] = useState<Record<string, boolean>>({})
 
+  // Verifica se o caminho atual corresponde à rota alvo ou seus filhos
   const isPathActive = (target: string) => {
     const normalizedTarget = target.replace(/\/+$/, '')
     const current = location.pathname.replace(/\/+$/, '')
     return current === normalizedTarget || current.startsWith(`${normalizedTarget}/`)
   }
 
+  // Expande automaticamente o menu com base na rota ativa
   useEffect(() => {
     const expandedByRoute: Record<string, boolean> = {}
     sections.forEach((section) => {
@@ -71,6 +71,7 @@ function Sidebar() {
     setOpenItems((prev) => ({ ...prev, ...expandedByRoute }))
   }, [location.pathname])
 
+  // Alterna o estado de expansão do submenu
   const toggleItem = (label: string, forceValue?: boolean) => {
     setOpenItems((prev) => {
       const current = prev[label] ?? false
@@ -93,24 +94,24 @@ function Sidebar() {
 
                 const handleParentClick = () => {
                   toggleItem(item.label, !isExpanded)
-                  if (item.to) navigate(item.to)
                 }
 
                 return (
                   <li key={item.label}>
                     {hasChildren ? (
                       <>
-                        <button onClick={handleParentClick}>
-                          {item.label}
+                        <button
+                          onClick={handleParentClick}
+                          className={isExpanded ? 'active' : undefined}
+                        >
+                          <span>{item.label}</span>
                         </button>
                         <ul className={`submenu ${isExpanded ? 'expanded' : 'collapsed'}`}>
                           {item.children!.map((child) => (
                             <li key={child.to}>
                               <NavLink
                                 to={child.to}
-                                className={({ isActive }) =>
-                                  isActive ? 'active' : undefined
-                                }
+                                className={({ isActive }) => (isActive ? 'active' : undefined)}
                               >
                                 {child.label}
                               </NavLink>
@@ -121,9 +122,7 @@ function Sidebar() {
                     ) : (
                       <NavLink
                         to={item.to ?? '/'}
-                        className={({ isActive }) =>
-                          isActive ? 'active' : undefined
-                        }
+                        className={({ isActive }) => (isActive ? 'active' : undefined)}
                       >
                         {item.label}
                       </NavLink>
