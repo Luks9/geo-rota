@@ -11,9 +11,9 @@ from geo_rota.schemas import (
     EscalaTrabalhoRead,
     EscalaTrabalhoUpdate,
     FuncionarioComDetalhes,
-    FuncionarioCreate,
+    FuncionarioCreatePayload,
     FuncionarioRead,
-    FuncionarioUpdate,
+    FuncionarioUpdatePayload,
     IndisponibilidadeFuncionarioCreate,
     IndisponibilidadeFuncionarioRead,
     IndisponibilidadeFuncionarioUpdate,
@@ -40,12 +40,12 @@ router = APIRouter(
 )
 
 
-@router.post("/", response_model=FuncionarioRead, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=FuncionarioComDetalhes, status_code=status.HTTP_201_CREATED)
 def criar(
-    dados: FuncionarioCreate,
+    dados: FuncionarioCreatePayload,
     _: Usuario = Depends(require_admin),
     db: Session = Depends(get_db),
-) -> FuncionarioRead:
+) -> FuncionarioComDetalhes:
     return criar_funcionario(db, dados)
 
 
@@ -65,13 +65,13 @@ def obter(funcionario_id: int, db: Session = Depends(get_db)) -> FuncionarioComD
     return funcionario
 
 
-@router.put("/{funcionario_id}", response_model=FuncionarioRead)
+@router.put("/{funcionario_id}", response_model=FuncionarioComDetalhes)
 def atualizar(
     funcionario_id: int,
-    dados: FuncionarioUpdate,
+    dados: FuncionarioUpdatePayload,
     _: Usuario = Depends(require_admin),
     db: Session = Depends(get_db),
-) -> FuncionarioRead:
+) -> FuncionarioComDetalhes:
     funcionario = atualizar_funcionario(db, funcionario_id, dados)
     if not funcionario:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Funcionário não encontrado")

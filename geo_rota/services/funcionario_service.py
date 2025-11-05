@@ -1,21 +1,48 @@
-from typing import Iterable, Optional
+from typing import Any, Iterable, Optional
 
 from sqlalchemy.orm import Session
 
 from geo_rota.models import EscalaTrabalho, Funcionario, IndisponibilidadeFuncionario
 from geo_rota.schemas import (
     EscalaTrabalhoCreate,
+    EscalaTrabalhoInput,
     EscalaTrabalhoUpdate,
-    FuncionarioCreate,
-    FuncionarioUpdate,
+    FuncionarioCreatePayload,
+    FuncionarioUpdatePayload,
     IndisponibilidadeFuncionarioCreate,
     IndisponibilidadeFuncionarioUpdate,
 )
 
 
-def criar_funcionario(db: Session, dados: FuncionarioCreate) -> Funcionario:
-    funcionario = Funcionario(**dados.dict())
+def _criar_escalas_para_funcionario(
+    db: Session,
+    funcionario_id: int,
+    escalas: Iterable[EscalaTrabalhoInput | dict[str, Any]],
+) -> None:
+    for escala_input in escalas:
+        escala_dados: dict[str, Any]
+        if hasattr(escala_input, "dict"):
+            escala_dados = escala_input.dict()
+        else:
+            escala_dados = dict(escala_input)
+        escala = EscalaTrabalho(
+            funcionario_id=funcionario_id,
+            **escala_dados,
+        )
+        db.add(escala)
+
+
+def criar_funcionario(db: Session, dados: FuncionarioCreatePayload) -> Funcionario:
+    payload = dados.dict()
+    escalas = payload.pop("escalas_trabalho", [])
+
+    funcionario = Funcionario(**payload)
     db.add(funcionario)
+    db.flush()  # garante ID para escalas
+
+    if escalas:
+        _criar_escalas_para_funcionario(db, funcionario.id, escalas)
+
     db.commit()
     db.refresh(funcionario)
     return funcionario
@@ -32,13 +59,27 @@ def obter_funcionario(db: Session, funcionario_id: int) -> Optional[Funcionario]
     return db.query(Funcionario).filter(Funcionario.id == funcionario_id).first()
 
 
-def atualizar_funcionario(db: Session, funcionario_id: int, dados: FuncionarioUpdate) -> Optional[Funcionario]:
+def atualizar_funcionario(
+    db: Session,
+    funcionario_id: int,
+    dados: FuncionarioUpdatePayload,
+) -> Optional[Funcionario]:
     funcionario = obter_funcionario(db, funcionario_id)
     if not funcionario:
         return None
 
-    for campo, valor in dados.dict(exclude_unset=True).items():
+    payload = dados.dict(exclude_unset=True)
+    escalas = payload.pop("escalas_trabalho", None)
+
+    for campo, valor in payload.items():
         setattr(funcionario, campo, valor)
+
+    if escalas is not None:
+        for escala in list(funcionario.escalas_trabalho):
+            db.delete(escala)
+        db.flush()
+        if escalas:
+            _criar_escalas_para_funcionario(db, funcionario.id, escalas)
 
     db.commit()
     db.refresh(funcionario)

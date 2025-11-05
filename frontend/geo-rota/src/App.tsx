@@ -4,7 +4,7 @@ import ProtectedRoute from './components/ProtectedRoute'
 import AppLayout from './layout/AppLayout'
 import Home from './pages/Home'
 import Login from './pages/Login'
-import { FuncionariosPage } from './pages/funcionarios/index'
+import { FuncionarioFormPage, FuncionariosPage } from './pages/funcionarios'
 
 function App() {
   return (
@@ -14,7 +14,11 @@ function App() {
         <Route element={<ProtectedRoute />}>
           <Route element={<AppLayout />}>
             <Route index element={<Home />} />
-            <Route path="/cadastro/funcionarios" element={<FuncionariosPage />} />
+            <Route path="/cadastro/funcionarios">
+              <Route index element={<FuncionariosPage />} />
+              <Route path="criar" element={<FuncionarioFormPage mode="create" />} />
+              <Route path="editar/:funcionarioId" element={<FuncionarioFormPage mode="edit" />} />
+            </Route>
           </Route>
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

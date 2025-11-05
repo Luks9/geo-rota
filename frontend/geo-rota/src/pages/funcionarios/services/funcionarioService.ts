@@ -21,14 +21,17 @@ export type Funcionario = {
   ativo: boolean
 }
 
-export type FuncionarioDetalhado = Funcionario & {
-  escalas_trabalho: EscalaTrabalho[]
-  indisponibilidades: IndisponibilidadeFuncionario[]
-}
-
 export type EscalaTrabalho = {
   id: number
   funcionario_id: number
+  dia_semana: number
+  turno: string
+  disponivel: boolean
+  hora_inicio: string | null
+  hora_fim: string | null
+}
+
+export type EscalaTrabalhoInput = {
   dia_semana: number
   turno: string
   disponivel: boolean
@@ -45,7 +48,15 @@ export type IndisponibilidadeFuncionario = {
   data_fim: string
 }
 
-export type FuncionarioCreatePayload = Omit<Funcionario, 'id'> & { ativo?: boolean }
+export type FuncionarioDetalhado = Funcionario & {
+  escalas_trabalho: EscalaTrabalho[]
+  indisponibilidades: IndisponibilidadeFuncionario[]
+}
+
+export type FuncionarioCreatePayload = Omit<Funcionario, 'id'> & {
+  ativo?: boolean
+  escalas_trabalho?: EscalaTrabalhoInput[]
+}
 
 export type FuncionarioUpdatePayload = Partial<{
   nome_completo: string
@@ -63,11 +74,20 @@ export type FuncionarioUpdatePayload = Partial<{
   cnh_valida_ate: string | null
   apto_dirigir: boolean
   ativo: boolean
+  escalas_trabalho: EscalaTrabalhoInput[]
 }>
 
 export type FuncionarioListParams = {
   empresaId?: number
 }
+
+const mapEscalaPayload = (escala: EscalaTrabalhoInput) => ({
+  dia_semana: escala.dia_semana,
+  turno: escala.turno,
+  disponivel: escala.disponivel,
+  hora_inicio: escala.hora_inicio ?? null,
+  hora_fim: escala.hora_fim ?? null,
+})
 
 const mapCreatePayload = (payload: FuncionarioCreatePayload) => {
   const body: Record<string, unknown> = { ...payload }
@@ -77,6 +97,7 @@ const mapCreatePayload = (payload: FuncionarioCreatePayload) => {
   body.categoria_cnh = payload.categoria_cnh ?? null
   body.cnh_valida_ate = payload.cnh_valida_ate ?? null
   body.ativo = payload.ativo ?? true
+  body.escalas_trabalho = (payload.escalas_trabalho ?? []).map(mapEscalaPayload)
   return body
 }
 
@@ -85,7 +106,11 @@ const mapUpdatePayload = (payload: FuncionarioUpdatePayload) => {
 
   Object.entries(payload).forEach(([key, value]) => {
     if (value !== undefined) {
-      body[key] = value
+      if (key === 'escalas_trabalho' && Array.isArray(value)) {
+        body[key] = value.map(mapEscalaPayload)
+      } else {
+        body[key] = value
+      }
     }
   })
 
@@ -105,13 +130,13 @@ export const funcionarioService = {
     return data
   },
 
-  async criar(payload: FuncionarioCreatePayload): Promise<Funcionario> {
-    const { data } = await api.post<Funcionario>('/funcionarios', mapCreatePayload(payload))
+  async criar(payload: FuncionarioCreatePayload): Promise<FuncionarioDetalhado> {
+    const { data } = await api.post<FuncionarioDetalhado>('/funcionarios', mapCreatePayload(payload))
     return data
   },
 
-  async atualizar(id: number, payload: FuncionarioUpdatePayload): Promise<Funcionario> {
-    const { data } = await api.put<Funcionario>(`/funcionarios/${id}`, mapUpdatePayload(payload))
+  async atualizar(id: number, payload: FuncionarioUpdatePayload): Promise<FuncionarioDetalhado> {
+    const { data } = await api.put<FuncionarioDetalhado>(`/funcionarios/${id}`, mapUpdatePayload(payload))
     return data
   },
 

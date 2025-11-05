@@ -11,6 +11,7 @@ from geo_rota.models import (
     FuncionarioGrupoRota,
     GrupoRota,
     IndisponibilidadeFuncionario,
+    DestinoRota,
     Veiculo,
 )
 from geo_rota.models.enums import (
@@ -43,10 +44,10 @@ def seed_empresas(session: Session) -> Empresa:
         codigo="GEO001",
         defaults={
             "nome": "GeoRota Matriz",
-            "endereco_base": "Rua Central, 1000",
-            "cidade": "São Paulo",
-            "estado": "SP",
-            "cep": "01000-000",
+            "endereco_base": "Av. Prudente de Morais, 3500",
+            "cidade": "Natal",
+            "estado": "RN",
+            "cep": "59064-620",
         },
     )
     return empresa
@@ -57,14 +58,14 @@ def seed_funcionarios(session: Session, empresa: Empresa) -> list[Funcionario]:
         {
             "nome_completo": "Ana Souza",
             "cpf": "123.456.789-00",
-            "email": "ana.souza@example.com",
-            "telefone": "11999990001",
-            "logradouro": "Rua das Flores",
-            "numero": "123",
-            "bairro": "Centro",
-            "cidade": "São Paulo",
-            "estado": "SP",
-            "cep": "01001-000",
+            "email": "ana.souza@georota.dev",
+            "telefone": "84999990001",
+            "logradouro": "Rua Jaguarari",
+            "numero": "2100",
+            "bairro": "Lagoa Nova",
+            "cidade": "Natal",
+            "estado": "RN",
+            "cep": "59063-500",
             "possui_cnh": True,
             "categoria_cnh": "B",
             "apto_dirigir": True,
@@ -72,42 +73,42 @@ def seed_funcionarios(session: Session, empresa: Empresa) -> list[Funcionario]:
         {
             "nome_completo": "Bruno Lima",
             "cpf": "987.654.321-00",
-            "email": "bruno.lima@example.com",
-            "telefone": "11999990002",
-            "logradouro": "Rua das Acácias",
-            "numero": "456",
-            "bairro": "Bela Vista",
-            "cidade": "São Paulo",
-            "estado": "SP",
-            "cep": "01310-000",
+            "email": "bruno.lima@georota.dev",
+            "telefone": "84999990002",
+            "logradouro": "Rua João XXIII",
+            "numero": "45",
+            "bairro": "Petrópolis",
+            "cidade": "Natal",
+            "estado": "RN",
+            "cep": "59020-320",
             "possui_cnh": False,
             "apto_dirigir": False,
         },
         {
             "nome_completo": "Carla Ferreira",
             "cpf": "321.654.987-00",
-            "email": "carla.ferreira@example.com",
-            "telefone": "11999990003",
-            "logradouro": "Av. Paulista",
-            "numero": "1500",
-            "bairro": "Paulista",
-            "cidade": "São Paulo",
-            "estado": "SP",
-            "cep": "01310-200",
+            "email": "carla.ferreira@georota.dev",
+            "telefone": "84999990003",
+            "logradouro": "Av. Ayrton Senna",
+            "numero": "2900",
+            "bairro": "Neópolis",
+            "cidade": "Natal",
+            "estado": "RN",
+            "cep": "59080-100",
             "possui_cnh": False,
             "apto_dirigir": False,
         },
         {
             "nome_completo": "Diego Martins",
             "cpf": "654.987.321-00",
-            "email": "diego.martins@example.com",
-            "telefone": "11999990004",
-            "logradouro": "Rua da Liberdade",
-            "numero": "789",
-            "bairro": "Liberdade",
-            "cidade": "São Paulo",
-            "estado": "SP",
-            "cep": "01502-000",
+            "email": "diego.martins@georota.dev",
+            "telefone": "84999990004",
+            "logradouro": "Rua São João",
+            "numero": "150",
+            "bairro": "Centro",
+            "cidade": "Parnamirim",
+            "estado": "RN",
+            "cep": "59140-300",
             "possui_cnh": True,
             "categoria_cnh": "B",
             "apto_dirigir": True,
@@ -128,6 +129,32 @@ def seed_funcionarios(session: Session, empresa: Empresa) -> list[Funcionario]:
     session.commit()
     return funcionarios
 
+
+def seed_destinos(session: Session, empresa: Empresa) -> DestinoRota:
+    partes_endereco = empresa.endereco_base.split(",", 1)
+    logradouro = partes_endereco[0].strip()
+    numero = partes_endereco[1].strip() if len(partes_endereco) > 1 else "S/N"
+
+    destino, _ = get_or_create(
+        session,
+        DestinoRota,
+        empresa_id=empresa.id,
+        nome=f"{empresa.nome} - Base",
+        defaults={
+            "logradouro": logradouro,
+            "numero": numero,
+            "complemento": None,
+            "bairro": "Lagoa Nova",
+            "cidade": empresa.cidade,
+            "estado": empresa.estado,
+            "cep": empresa.cep,
+            "latitude": -5.8278546,
+            "longitude": -35.2062241,
+            "ativo": True,
+        },
+    )
+    session.commit()
+    return destino
 
 def seed_escalas(session: Session, funcionarios: list[Funcionario]) -> None:
     dias_uteis = range(0, 5)  # segunda a sexta
@@ -268,6 +295,7 @@ def run_seed() -> None:
     session = SessionLocal()
     try:
         empresa = seed_empresas(session)
+        _destino_base = seed_destinos(session, empresa)
         funcionarios = seed_funcionarios(session, empresa)
         seed_escalas(session, funcionarios)
         grupo = seed_grupos_rota(session, empresa)

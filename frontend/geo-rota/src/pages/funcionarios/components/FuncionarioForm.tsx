@@ -2,6 +2,14 @@ import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from '
 
 import type { Empresa } from '../services/empresaService'
 
+export type EscalaFormValue = {
+  diaSemana: number
+  turno: 'manha' | 'tarde' | 'noite'
+  disponivel: boolean
+  horaInicio: string
+  horaFim: string
+}
+
 export type FuncionarioFormValues = {
   empresaId: string
   nomeCompleto: string
@@ -20,6 +28,7 @@ export type FuncionarioFormValues = {
   cnhValidaAte: string
   aptoDirigir: boolean
   ativo: boolean
+  escalas: EscalaFormValue[]
 }
 
 type FuncionarioFormProps = {
@@ -49,7 +58,27 @@ const defaultValues: FuncionarioFormValues = {
   cnhValidaAte: '',
   aptoDirigir: false,
   ativo: true,
+  escalas: [],
 }
+
+
+const DIA_SEMANA_OPTIONS = [
+  { value: '0', label: 'Segunda-feira' },
+  { value: '1', label: 'Terça-feira' },
+  { value: '2', label: 'Quarta-feira' },
+  { value: '3', label: 'Quinta-feira' },
+  { value: '4', label: 'Sexta-feira' },
+  { value: '5', label: 'Sábado' },
+  { value: '6', label: 'Domingo' },
+]
+
+const TURNO_OPTIONS = [
+  { value: 'manha', label: 'Manhã' },
+  { value: 'tarde', label: 'Tarde' },
+  { value: 'noite', label: 'Noite' },
+]
+
+const emptyEscalaDraft = { diaSemana: '', turno: '', disponivel: true, horaInicio: '', horaFim: '' } as const
 
 type FormErrors = Partial<Record<keyof FuncionarioFormValues, string>>
 
@@ -59,10 +88,13 @@ function FuncionarioForm({ mode, empresas, initialValues, loading = false, onSub
   const [values, setValues] = useState<FuncionarioFormValues>(defaultValues)
   const [errors, setErrors] = useState<FormErrors>({})
 
+  const [escalaDraft, setEscalaDraft] = useState<typeof emptyEscalaDraft>(emptyEscalaDraft)
+
   useEffect(() => {
     if (initialValues) {
       setValues(initialValues)
       setErrors({})
+      setEscalaDraft(emptyEscalaDraft)
       return
     }
 
@@ -71,6 +103,7 @@ function FuncionarioForm({ mode, empresas, initialValues, loading = false, onSub
       empresaId: empresas.length === 1 ? String(empresas[0].id) : '',
     }))
     setErrors({})
+    setEscalaDraft(emptyEscalaDraft)
   }, [empresas, initialValues])
 
   const titleMessage = useMemo(() => {
@@ -79,6 +112,74 @@ function FuncionarioForm({ mode, empresas, initialValues, loading = false, onSub
     }
     return 'Atualize os dados do funcionario e salve para aplicar as alteracoes.'
   }, [mode])
+
+  const getDiaSemanaLabel = (value: number) =>
+    DIA_SEMANA_OPTIONS.find((option) => Number(option.value) === value)?.label ?? `Dia ${value}`
+
+  const getTurnoLabel = (turno: string) =>
+    TURNO_OPTIONS.find((option) => option.value === turno)?.label ?? turno
+
+  const handleEscalaDraftChange =
+    (field: 'diaSemana' | 'turno' | 'horaInicio' | 'horaFim') =>
+    (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+      const { value } = event.target
+      setEscalaDraft((prev) => ({ ...prev, [field]: value }))
+      if (errors.escalas) {
+        setErrors((prev) => {
+          const next = { ...prev }
+          delete next.escalas
+          return next
+        })
+      }
+    }
+
+  const handleEscalaDisponivelChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const { checked } = event.target
+    setEscalaDraft((prev) => ({ ...prev, disponivel: checked }))
+  }
+
+  const handleAddEscala = () => {
+    const { diaSemana, turno, disponivel, horaInicio, horaFim } = escalaDraft
+    if (!diaSemana || !turno) {
+      setErrors((prev) => ({ ...prev, escalas: 'Selecione o dia da semana e o turno.' }))
+      return
+    }
+    const diaNumero = Number(diaSemana)
+    if (Number.isNaN(diaNumero)) {
+      setErrors((prev) => ({ ...prev, escalas: 'Dia da semana inválido.' }))
+      return
+    }
+    const exists = values.escalas.some((esc) => esc.diaSemana === diaNumero && esc.turno === turno)
+    if (exists) {
+      setErrors((prev) => ({ ...prev, escalas: 'Já existe uma escala para esse dia e turno.' }))
+      return
+    }
+    const novaEscala: EscalaFormValue = {
+      diaSemana: diaNumero,
+      turno: turno as 'manha' | 'tarde' | 'noite',
+      disponivel,
+      horaInicio: horaInicio.trim(),
+      horaFim: horaFim.trim(),
+    }
+    setValues((prev) => ({
+      ...prev,
+      escalas: [...prev.escalas, novaEscala],
+    }))
+    setEscalaDraft(emptyEscalaDraft)
+    setErrors((prev) => {
+      if (!prev.escalas) return prev
+      const next = { ...prev }
+      delete next.escalas
+      return next
+    })
+  }
+
+  const handleRemoveEscala = (index: number) => {
+    setValues((prev) => ({
+      ...prev,
+      escalas: prev.escalas.filter((_, itemIndex) => itemIndex !== index),
+    }))
+  }
 
   const handleFieldChange =
     (field: keyof FuncionarioFormValues) =>
@@ -126,6 +227,15 @@ function FuncionarioForm({ mode, empresas, initialValues, loading = false, onSub
     if (!sanitizeText(values.bairro)) {
       nextErrors.bairro = 'Informe o bairro.'
     }
+    const combinacoes = new Set<string>()
+    for (const escala of values.escalas) {
+      const chave = `${escala.diaSemana}-${escala.turno}`
+      if (combinacoes.has(chave)) {
+        nextErrors.escalas = 'N�o repita o mesmo dia e turno na escala.'
+        break
+      }
+      combinacoes.add(chave)
+    }
     if (!sanitizeText(values.cidade)) {
       nextErrors.cidade = 'Informe a cidade.'
     }
@@ -169,7 +279,10 @@ function FuncionarioForm({ mode, empresas, initialValues, loading = false, onSub
       cep: sanitizeText(values.cep),
       categoriaCnh: sanitizeText(values.categoriaCnh),
       cnhValidaAte: sanitizeText(values.cnhValidaAte),
+      escalas: values.escalas,
     })
+
+    setEscalaDraft(emptyEscalaDraft)
   }
 
   const empresaSelecionada = empresas.find((empresa) => String(empresa.id) === values.empresaId)
@@ -433,6 +546,171 @@ function FuncionarioForm({ mode, empresas, initialValues, loading = false, onSub
         </div>
 
         <div className="column is-full">
+          <div className="box">
+            <h2 className="title is-6">Escala de trabalho</h2>
+            <div className="columns is-multiline">
+              <div className="column is-3">
+                <div className="field">
+                  <label className="label" htmlFor="escalaDia">
+                    Dia da semana
+                  </label>
+                  <div className="control">
+                    <div className="select is-fullwidth">
+                      <select
+                        id="escalaDia"
+                        value={escalaDraft.diaSemana}
+                        onChange={handleEscalaDraftChange('diaSemana')}
+                        disabled={loading}
+                      >
+                        <option value="">Selecione</option>
+                        {DIA_SEMANA_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="column is-3">
+                <div className="field">
+                  <label className="label" htmlFor="escalaTurno">
+                    Turno
+                  </label>
+                  <div className="control">
+                    <div className="select is-fullwidth">
+                      <select
+                        id="escalaTurno"
+                        value={escalaDraft.turno}
+                        onChange={handleEscalaDraftChange('turno')}
+                        disabled={loading}
+                      >
+                        <option value="">Selecione</option>
+                        {TURNO_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="column is-2">
+                <div className="field">
+                  <label className="label" htmlFor="escalaHoraInicio">
+                    Hora inicio
+                  </label>
+                  <div className="control">
+                    <input
+                      id="escalaHoraInicio"
+                      className="input"
+                      type="time"
+                      value={escalaDraft.horaInicio}
+                      onChange={handleEscalaDraftChange('horaInicio')}
+                      disabled={loading}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="column is-2">
+                <div className="field">
+                  <label className="label" htmlFor="escalaHoraFim">
+                    Hora fim
+                  </label>
+                  <div className="control">
+                    <input
+                      id="escalaHoraFim"
+                      className="input"
+                      type="time"
+                      value={escalaDraft.horaFim}
+                      onChange={handleEscalaDraftChange('horaFim')}
+                      disabled={loading}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="column is-2">
+                <div className="field">
+                  <label className="label">Disponibilidade</label>
+                  <div className="control">
+                    <label className="checkbox">
+                      <input
+                        type="checkbox"
+                        checked={escalaDraft.disponivel}
+                        onChange={handleEscalaDisponivelChange}
+                        disabled={loading}
+                      />
+                      <span className="ml-2">Disponível</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <div className="column is-12">
+                <div className="field">
+                  <div className="control">
+                    <button
+                      type="button"
+                      className="button is-link is-light"
+                      onClick={handleAddEscala}
+                      disabled={loading}
+                    >
+                      Adicionar escala
+                    </button>
+                  </div>
+                </div>
+                {errors.escalas && <p className="help is-danger">{errors.escalas}</p>}
+              </div>
+            </div>
+
+            {values.escalas.length > 0 && (
+              <div className="table-container mt-3">
+                <table className="table is-fullwidth is-striped is-hoverable">
+                  <thead>
+                    <tr>
+                      <th>Dia</th>
+                      <th>Turno</th>
+                      <th>Disponível</th>
+                      <th>Hora início</th>
+                      <th>Hora fim</th>
+                      <th className="has-text-right">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {values.escalas.map((escala, index) => (
+                      <tr key={`${escala.diaSemana}-${escala.turno}`}>
+                        <td>{getDiaSemanaLabel(escala.diaSemana)}</td>
+                        <td>{getTurnoLabel(escala.turno)}</td>
+                        <td>{escala.disponivel ? 'Sim' : 'Não'}</td>
+                        <td>{escala.horaInicio || '--'}</td>
+                        <td>{escala.horaFim || '--'}</td>
+                        <td className="has-text-right">
+                          <button
+                            type="button"
+                            className="button is-small is-danger is-light"
+                            onClick={() => handleRemoveEscala(index)}
+                            disabled={loading}
+                          >
+                            <span className="icon is-small">
+                              <i className="fas fa-trash-alt" aria-hidden="true" />
+                            </span>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="column is-full">
           <div className="field">
             <label className="label">Habilitacao</label>
             <div className="control">
@@ -446,7 +724,7 @@ function FuncionarioForm({ mode, empresas, initialValues, loading = false, onSub
                 <span className="ml-2">Possui CNH</span>
               </label>
             </div>
-          </div>
+              </div>
         </div>
 
         <div className="column is-half">
@@ -466,7 +744,7 @@ function FuncionarioForm({ mode, empresas, initialValues, loading = false, onSub
               />
             </div>
             {errors.categoriaCnh && <p className="help is-danger">{errors.categoriaCnh}</p>}
-          </div>
+              </div>
         </div>
 
         <div className="column is-half">
@@ -484,7 +762,7 @@ function FuncionarioForm({ mode, empresas, initialValues, loading = false, onSub
                 disabled={loading || !values.possuiCnh}
               />
             </div>
-          </div>
+              </div>
         </div>
 
         <div className="column is-full">
@@ -511,7 +789,7 @@ function FuncionarioForm({ mode, empresas, initialValues, loading = false, onSub
                 <span className="ml-2">Ativo</span>
               </label>
             </div>
-          </div>
+              </div>
         </div>
 
         {empresaSelecionada && (
@@ -519,9 +797,9 @@ function FuncionarioForm({ mode, empresas, initialValues, loading = false, onSub
             <p className="help">
               Funcionario vinculado a empresa <strong>{empresaSelecionada.nome}</strong>.
             </p>
+              </div>
+            )}
           </div>
-        )}
-      </div>
 
       <div className="buttons is-right">
         <button type="button" className="button is-light" onClick={onCancel} disabled={loading}>
@@ -530,7 +808,7 @@ function FuncionarioForm({ mode, empresas, initialValues, loading = false, onSub
         <button type="submit" className={`button ${mode === 'create' ? 'is-success' : 'is-link'}`} disabled={loading}>
           {loading ? 'Processando...' : mode === 'create' ? 'Cadastrar' : 'Salvar alteracoes'}
         </button>
-      </div>
+          </div>
     </form>
   )
 }

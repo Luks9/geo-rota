@@ -11,7 +11,7 @@ Responsável por:
 from __future__ import annotations
 
 from datetime import date
-from typing import List, Optional, Sequence, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
 
 from geopy.exc import GeocoderServiceError
 from ortools.constraint_solver import pywrapcp, routing_enums_pb2
@@ -22,6 +22,7 @@ from geo_rota.models import (
     AtribuicaoRota,
     DisponibilidadeVeiculo,
     Empresa,
+    DestinoRota,
     Funcionario,
     FuncionarioGrupoRota,
     EscalaTrabalho,
@@ -72,6 +73,42 @@ def _montar_endereco_completo(funcionario: Funcionario) -> str:
         funcionario.cep,
     ]
     return ", ".join(filter(None, partes))
+
+
+def _montar_endereco_destino(destino: DestinoRota) -> str:
+    partes = [
+        destino.logradouro,
+        destino.numero,
+        destino.complemento,
+        destino.bairro,
+        f"{destino.cidade} - {destino.estado}",
+        destino.cep,
+    ]
+    return ", ".join(filter(None, partes + ["Brasil"]))
+
+
+def _montar_endereco_empresa(empresa: Empresa) -> str:
+    """Gera o endereço completo utilizado como destino padrão da empresa."""
+    partes = [
+        empresa.endereco_base,
+        empresa.cidade,
+        empresa.estado,
+        empresa.cep,
+    ]
+    return ", ".join(filter(None, partes))
+
+
+def _obter_coordenadas_funcionarios(
+    funcionarios: Sequence[Funcionario],
+) -> Dict[int, Tuple[float, float]]:
+    """
+    Geocodifica e retorna as coordenadas de cada funcionário disponibilizado.
+    """
+    coordenadas: Dict[int, Tuple[float, float]] = {}
+    for funcionario in funcionarios:
+        endereco = _montar_endereco_completo(funcionario)
+        coordenadas[funcionario.id] = geocode_address(endereco)
+    return coordenadas
 
 
 def _dia_semana(data_referencia: date) -> int:
@@ -127,15 +164,26 @@ def _filtrar_funcionarios_disponiveis(
         )
         .distinct()
     )
+    funcionarios_ocupados_subq = (
+        session.query(AtribuicaoRota.funcionario_id)
+        .join(Rota, AtribuicaoRota.rota_id == Rota.id)
+        .filter(
+            Rota.data_agendada == data_agendada,
+            Rota.turno == turno,
+        )
+    )
+    query = query.filter(~Funcionario.id.in_(funcionarios_ocupados_subq.subquery()))
     return list(query.all())
 
 
 def _selecionar_motorista(
     funcionarios: Sequence[Funcionario],
     motorista_id: Optional[int],
+    coordenadas: Optional[Dict[int, Tuple[float, float]]] = None,
+    destino_coordenadas: Optional[Tuple[float, float]] = None,
 ) -> Funcionario:
     """
-    Retorna o motorista informado ou escolhe automaticamente o primeiro apto a dirigir.
+    Retorna o motorista informado ou escolhe automaticamente o motorista apto com menor estimativa de trajeto.
     """
     if motorista_id is not None:
         for funcionario in funcionarios:
@@ -143,10 +191,56 @@ def _selecionar_motorista(
                 return funcionario
         raise ValueError("Motorista informado não está disponível ou não possui CNH válida.")
 
-    for funcionario in funcionarios:
-        if funcionario.apto_dirigir and funcionario.possui_cnh:
-            return funcionario
-    raise ValueError("Nenhum motorista habilitado disponível para o grupo/data/turno informados.")
+    candidatos = [f for f in funcionarios if f.apto_dirigir and f.possui_cnh]
+    if not candidatos:
+        raise ValueError("Nenhum motorista habilitado disponível para o grupo/data/turno informados.")
+
+    if coordenadas is None or destino_coordenadas is None:
+        return candidatos[0]
+
+    melhor_motorista = candidatos[0]
+    melhor_distancia: Optional[float] = None
+
+    for candidato in candidatos:
+        coord_motorista = coordenadas.get(candidato.id)
+        if coord_motorista is None:
+            continue
+
+        coords_trajeto: List[Tuple[float, float]] = [coord_motorista]
+        for passageiro in funcionarios:
+            if passageiro.id == candidato.id:
+                continue
+            coord_passageiro = coordenadas.get(passageiro.id)
+            if coord_passageiro is None:
+                coords_trajeto = []
+                break
+            coords_trajeto.append(coord_passageiro)
+
+        if not coords_trajeto:
+            continue
+
+        coords_trajeto.append(destino_coordenadas)
+        indice_destino = len(coords_trajeto) - 1
+        if indice_destino <= 0:
+            continue
+
+        try:
+            ordem_passageiros = _resolver_ordem_embarque(coords_trajeto, indice_destino)
+            distancia_estimativa = _calcular_distancia_total(coords_trajeto, ordem_passageiros, indice_destino)
+        except Exception:  # fallback em caso de falha na otimização
+            distancia_estimativa = None
+
+        if distancia_estimativa is None:
+            continue
+
+        if melhor_distancia is None or distancia_estimativa < melhor_distancia:
+            melhor_distancia = distancia_estimativa
+            melhor_motorista = candidato
+
+    if melhor_distancia is None:
+        return candidatos[0]
+
+    return melhor_motorista
 
 
 def _parse_dias_semana(dias: Optional[str]) -> set[int]:
@@ -223,17 +317,29 @@ def _gerar_matriz_distancia(coords: Sequence[Tuple[float, float]]) -> List[List[
     return matriz
 
 
-def _resolver_ordem_embarque(coords: Sequence[Tuple[float, float]]) -> List[int]:
+def _resolver_ordem_embarque(
+    coords: Sequence[Tuple[float, float]],
+    indice_destino_final: int,
+) -> List[int]:
     """
     Resolve um problema de caixeiro viajante simples para ordenar paradas.
 
-    O índice 0 é o motorista (ponto de partida/retorno). Retorna a ordem dos passageiros.
+    O índice 0 é o motorista (ponto de partida) e `indice_destino_final` marca o destino fixo.
+    Retorna somente a ordem dos passageiros (índices intermediários).
     """
-    if len(coords) <= 1:
+    if indice_destino_final <= 0 or indice_destino_final >= len(coords):
+        raise ValueError("Índice do destino final inválido para a matriz de coordenadas.")
+
+    if len(coords) <= 2:
         return []
 
     dist_matrix = _gerar_matriz_distancia(coords)
-    manager = pywrapcp.RoutingIndexManager(len(dist_matrix), 1, 0)  # 1 veículo, depósito 0 (motorista)
+    manager = pywrapcp.RoutingIndexManager(
+        len(dist_matrix),
+        1,
+        [0],
+        [indice_destino_final],
+    )
     routing = pywrapcp.RoutingModel(manager)
 
     def distance_callback(from_index: int, to_index: int) -> int:
@@ -258,26 +364,34 @@ def _resolver_ordem_embarque(coords: Sequence[Tuple[float, float]]) -> List[int]
     index = routing.Start(0)
     while not routing.IsEnd(index):
         node_index = manager.IndexToNode(index)
-        if node_index != 0:
+        if node_index not in (0, indice_destino_final):
             ordem_passageiros.append(node_index)
         index = solution.Value(routing.NextVar(index))
     return ordem_passageiros
 
 
-def _calcular_distancia_total(coords: Sequence[Tuple[float, float]], ordem_passageiros: Sequence[int]) -> float:
+def _calcular_distancia_total(
+    coords: Sequence[Tuple[float, float]],
+    ordem_passageiros: Sequence[int],
+    indice_destino_final: int,
+) -> float:
     """
-    Calcula a distância percorrida levando em conta o retorno ao ponto inicial.
+    Calcula a distância percorrida até o destino fixo informado.
     """
-    if not ordem_passageiros:
-        return 0.0
+    if indice_destino_final <= 0 or indice_destino_final >= len(coords):
+        raise ValueError("Índice do destino final inválido para cálculo de distância.")
 
     total = 0.0
     atual = coords[0]
+
+    if not ordem_passageiros:
+        return distance_km(atual, coords[indice_destino_final])
+
     for idx in ordem_passageiros:
         proximo = coords[idx]
         total += distance_km(atual, proximo)
         atual = proximo
-    total += distance_km(atual, coords[0])  # retorno ao motorista
+    total += distance_km(atual, coords[indice_destino_final])
     return total
 
 
@@ -353,11 +467,92 @@ def gerar_rota_automatica(session: Session, requisicao: RequisicaoGerarRota) -> 
     if not funcionarios_disponiveis:
         raise ValueError("Nenhum funcionário disponível para o grupo, data e turno informados.")
 
-    motorista = _selecionar_motorista(funcionarios_disponiveis, requisicao.motorista_id)
+    destino: DestinoRota | None = None
+    destino_coordenadas: Tuple[float, float]
+    if requisicao.destino_id is not None:
+        destino = session.get(DestinoRota, requisicao.destino_id)
+        if not destino or destino.empresa_id != empresa.id:
+            raise ValueError("Destino informado é inválido para a empresa selecionada.")
+        endereco_destino = _montar_endereco_destino(destino)
+        if destino.latitude is not None and destino.longitude is not None:
+            destino_coordenadas = (destino.latitude, destino.longitude)
+        else:
+            try:
+                destino_coordenadas = geocode_address(endereco_destino)
+            except (GeocodeError, GeocoderServiceError) as exc:
+                raise ValueError(f"Falha ao geocodificar o destino selecionado: {exc}") from exc
+            destino.latitude, destino.longitude = destino_coordenadas
+    else:
+        campos_obrigatorios = [
+            ("destino_logradouro", requisicao.destino_logradouro),
+            ("destino_numero", requisicao.destino_numero),
+            ("destino_bairro", requisicao.destino_bairro),
+            ("destino_cidade", requisicao.destino_cidade),
+            ("destino_estado", requisicao.destino_estado),
+            ("destino_cep", requisicao.destino_cep),
+        ]
+        faltantes = [campo for campo, valor in campos_obrigatorios if not (valor and valor.strip())]
+        if faltantes:
+            raise ValueError("Informe um destino_id válido ou todos os campos de endereço do destino (logradouro, número, bairro, cidade, estado, CEP).")
+
+        destino_nome = (requisicao.destino_nome or empresa.nome).strip()
+        destino_estado = requisicao.destino_estado.strip().upper()
+        destino_cep = requisicao.destino_cep.replace(" ", "").strip()
+        destino_complemento = requisicao.destino_complemento.strip() if requisicao.destino_complemento else None
+
+        endereco_componentes = [
+            ', '.join(filter(None, [requisicao.destino_logradouro.strip(), requisicao.destino_numero.strip()])),
+            destino_complemento,
+            requisicao.destino_bairro.strip(),
+            f"{requisicao.destino_cidade.strip()} - {destino_estado}",
+            destino_cep,
+            "Brasil",
+        ]
+        destino_endereco = ', '.join(filter(None, endereco_componentes))
+
+        try:
+            destino_coordenadas = geocode_address(destino_endereco)
+        except (GeocodeError, GeocoderServiceError) as exc:
+            raise ValueError(f"Falha ao geocodificar o destino final: {exc}") from exc
+
+        destino = DestinoRota(
+            empresa_id=empresa.id,
+            nome=destino_nome,
+            logradouro=requisicao.destino_logradouro.strip(),
+            numero=requisicao.destino_numero.strip(),
+            complemento=destino_complemento,
+            bairro=requisicao.destino_bairro.strip(),
+            cidade=requisicao.destino_cidade.strip(),
+            estado=destino_estado,
+            cep=destino_cep,
+            latitude=destino_coordenadas[0],
+            longitude=destino_coordenadas[1],
+            ativo=True,
+        )
+        session.add(destino)
+        session.flush()
+
+    try:
+        coordenadas_funcionarios = _obter_coordenadas_funcionarios(funcionarios_disponiveis)
+    except (GeocodeError, GeocoderServiceError) as exc:
+        raise ValueError(f"Falha ao geocodificar um endereço: {exc}") from exc
+
+    motorista = _selecionar_motorista(
+        funcionarios_disponiveis,
+        requisicao.motorista_id,
+        coordenadas=coordenadas_funcionarios,
+        destino_coordenadas=destino_coordenadas,
+    )
 
     passageiros = [f for f in funcionarios_disponiveis if f.id != motorista.id]
     if not passageiros:
         raise ValueError("Não há passageiros para gerar rota além do motorista selecionado.")
+
+    veiculo: Veiculo | None = None
+    disponibilidade: DisponibilidadeVeiculo | None = None
+    passageiros_alocados = passageiros
+    passageiros_pendentes: List[Funcionario] = []
+    sugestoes_adicionais: List[dict] = []
 
     try:
         veiculo, disponibilidade = _selecionar_disponibilidade_veiculo(
@@ -367,29 +562,39 @@ def gerar_rota_automatica(session: Session, requisicao: RequisicaoGerarRota) -> 
             capacidade_minima=len(passageiros) + 1,  # motorista + passageiros
             veiculo_id=requisicao.veiculo_id,
         )
-    except ValueError as exc:
-        sugestoes = _sugerir_veiculos_para_quantidade(len(passageiros) + 1)
-        raise CapacidadeVeiculoInsuficienteError(str(exc), sugestoes=sugestoes) from exc
-
-    capacidade_util = veiculo.capacidade_passageiros - 1  # motorista ocupa uma vaga
-    passageiros_alocados = passageiros[:capacidade_util]
-    passageiros_pendentes = passageiros[capacidade_util:]
-    sugestoes_adicionais = _sugerir_veiculos_para_quantidade(len(passageiros_pendentes))
+    except CapacidadeVeiculoInsuficienteError as exc:
+        sugestoes_adicionais = exc.sugestoes or _sugerir_veiculos_para_quantidade(len(passageiros) + 1)
+    except ValueError:
+        sugestoes_adicionais = _sugerir_veiculos_para_quantidade(len(passageiros) + 1)
+    else:
+        capacidade_util = max(veiculo.capacidade_passageiros - 1, 0)
+        passageiros_alocados = passageiros[:capacidade_util] if capacidade_util > 0 else []
+        passageiros_pendentes = passageiros[capacidade_util:]
+        sugestoes_adicionais = _sugerir_veiculos_para_quantidade(len(passageiros_pendentes))
 
     # Geocodificação dos endereços para o motorista e passageiros alocados.
     coordenadas: List[Tuple[float, float]] = []
     funcionarios_trajeto: List[Funcionario] = [motorista] + passageiros_alocados
 
-    try:
-        for func in funcionarios_trajeto:
-            endereco = _montar_endereco_completo(func)
-            coordenadas.append(geocode_address(endereco))
-    except (GeocodeError, GeocoderServiceError) as exc:
-        raise ValueError(f"Falha ao geocodificar um endereço: {exc}") from exc
+    for func in funcionarios_trajeto:
+        coord = coordenadas_funcionarios.get(func.id)
+        if coord is None:
+            raise ValueError("Falha ao obter coordenadas geocodificadas para um funcionário.")
+        coordenadas.append(coord)
 
-    ordem_passageiros = _resolver_ordem_embarque(coordenadas)
-    distancia_total_km = _calcular_distancia_total(coordenadas, ordem_passageiros)
-    custo_estimado = distancia_total_km * CUSTO_RELATIVO_CATEGORIA.get(veiculo.categoria_custo, 1.0)
+    coordenadas_com_destino = coordenadas + [destino_coordenadas]
+    indice_destino_final = len(coordenadas_com_destino) - 1
+
+    ordem_passageiros = _resolver_ordem_embarque(coordenadas_com_destino, indice_destino_final)
+    distancia_total_km = _calcular_distancia_total(
+        coordenadas_com_destino,
+        ordem_passageiros,
+        indice_destino_final,
+    )
+    custo_estimado = distancia_total_km * CUSTO_RELATIVO_CATEGORIA.get(
+        veiculo.categoria_custo if veiculo else CategoriaCustoVeiculo.BAIXO,
+        1.0,
+    )
 
     # Verifica se já existe rota para o mesmo dia/turno/grupo.
     rota_existente = (
@@ -405,19 +610,22 @@ def gerar_rota_automatica(session: Session, requisicao: RequisicaoGerarRota) -> 
     if rota_existente:
         raise ValueError("Já existe uma rota cadastrada para este grupo, data e turno.")
 
+    status_rota = StatusRotaEnum.AGENDADA if veiculo else StatusRotaEnum.RASCUNHO
+
     rota = Rota(
         empresa_id=empresa.id,
         grupo_rota_id=grupo.id,
-        veiculo_id=veiculo.id,
+        veiculo_id=veiculo.id if veiculo else None,
         motorista_id=motorista.id,
-        disponibilidade_veiculo_id=disponibilidade.id,
+        disponibilidade_veiculo_id=disponibilidade.id if disponibilidade else None,
         data_agendada=requisicao.data_agendada,
         turno=requisicao.turno,
-        status=StatusRotaEnum.AGENDADA,
+        status=status_rota,
         modo_geracao=requisicao.modo_geracao,
         distancia_total_km=round(distancia_total_km, 2),
         custo_operacional_total=round(custo_estimado, 2),
         observacoes="Rota gerada automaticamente com base na disponibilidade de funcionários e veículos.",
+        destino_id=destino.id,
     )
     session.add(rota)
     session.flush()  # obtém ID
@@ -429,10 +637,14 @@ def gerar_rota_automatica(session: Session, requisicao: RequisicaoGerarRota) -> 
             funcionario_id=motorista.id,
             papel=PapelAtribuicaoRota.MOTORISTA,
             ordem_embarque=0,
+            latitude=coordenadas[0][0],
+            longitude=coordenadas[0][1],
         )
     )
 
     for ordem, idx_passageiro in enumerate(ordem_passageiros, start=1):
+        if idx_passageiro >= len(funcionarios_trajeto):
+            continue
         passageiro = funcionarios_trajeto[idx_passageiro]
         session.add(
             AtribuicaoRota(
@@ -440,6 +652,8 @@ def gerar_rota_automatica(session: Session, requisicao: RequisicaoGerarRota) -> 
                 funcionario_id=passageiro.id,
                 papel=PapelAtribuicaoRota.PASSAGEIRO,
                 ordem_embarque=ordem,
+                latitude=coordenadas[idx_passageiro][0],
+                longitude=coordenadas[idx_passageiro][1],
             )
         )
 
@@ -459,7 +673,7 @@ def gerar_rota_automatica(session: Session, requisicao: RequisicaoGerarRota) -> 
         LogGeracaoRota(
             rota_id=rota.id,
             quantidade_funcionarios=len(passageiros_alocados),
-            veiculo_id=veiculo.id,
+            veiculo_id=veiculo.id if veiculo else None,
             motorista_id=motorista.id,
             observacoes="Rota gerada automaticamente pela API.",
         )

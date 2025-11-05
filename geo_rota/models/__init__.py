@@ -2,6 +2,7 @@ from geo_rota.models.company import Empresa  # noqa: F401
 from geo_rota.models.employee import Funcionario  # noqa: F401
 from geo_rota.models.employee_route_group import FuncionarioGrupoRota  # noqa: F401
 from geo_rota.models.employee_unavailability import IndisponibilidadeFuncionario  # noqa: F401
+from geo_rota.models.destination import DestinoRota  # noqa: F401
 from geo_rota.models.route import (
     AtribuicaoRota,
     FuncionarioPendenteRota,

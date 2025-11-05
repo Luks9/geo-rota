@@ -41,6 +41,7 @@ class Rota(Base):
         nullable=True,
         index=True,
     )
+    destino_id = Column(Integer, ForeignKey("destinos_rota.id"), nullable=True, index=True)
 
     data_agendada = Column(Date, nullable=False)
     turno = Column(SAEnum(TurnoTrabalhoEnum, name="turno_rota_enum", native_enum=False), nullable=False)
@@ -66,6 +67,7 @@ class Rota(Base):
     veiculo = relationship("Veiculo", back_populates="rotas")
     disponibilidade_veiculo = relationship("DisponibilidadeVeiculo", back_populates="rotas")
     motorista = relationship("Funcionario", back_populates="rotas_conduzidas", foreign_keys=[motorista_id])
+    destino = relationship("DestinoRota", back_populates="rotas")
     atribuicoes = relationship(
         "AtribuicaoRota",
         back_populates="rota",
@@ -109,6 +111,8 @@ class AtribuicaoRota(Base):
     )
     ordem_embarque = Column(Integer, nullable=True)
     hora_embarque = Column(String(5), nullable=True)
+    latitude = Column(Float, nullable=True)
+    longitude = Column(Float, nullable=True)
 
     rota = relationship("Rota", back_populates="atribuicoes")
     funcionario = relationship("Funcionario", back_populates="atribuicoes_rota")

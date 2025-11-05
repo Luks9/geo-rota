@@ -7,7 +7,7 @@ from geo_rota.models.enums import RoleEnum
 
 class UserBase(BaseModel):
     nome: str = Field(..., max_length=150)
-    email: EmailStr
+    email: str
     role: RoleEnum = RoleEnum.USER
 
 

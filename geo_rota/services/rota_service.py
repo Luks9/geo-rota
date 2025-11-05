@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from geo_rota.models import (
     AtribuicaoRota,
+    Funcionario,
     FuncionarioPendenteRota,
     LogAdministrativo,
     LogErroRota,
@@ -17,6 +18,29 @@ from geo_rota.schemas import (
     RotaCreate,
     RotaUpdate,
 )
+from geo_rota.utils import GeocodeError, geocode_address
+
+
+def _montar_endereco_funcionario(funcionario: Funcionario) -> str:
+    partes = [
+        funcionario.logradouro,
+        funcionario.numero,
+        funcionario.complemento,
+        funcionario.bairro,
+        funcionario.cidade,
+        funcionario.estado,
+        funcionario.cep,
+        "Brasil",
+    ]
+    return ", ".join(filter(None, partes))
+
+
+def _obter_coordenadas_funcionario(funcionario: Funcionario) -> tuple[float, float] | None:
+    endereco = _montar_endereco_funcionario(funcionario)
+    try:
+        return geocode_address(endereco)
+    except GeocodeError:
+        return None
 
 
 def criar_rota(db: Session, dados: RotaCreate) -> Rota:
@@ -68,7 +92,15 @@ def remover_rota(db: Session, rota_id: int) -> bool:
 
 
 def atribuir_funcionario(db: Session, dados: AtribuicaoRotaCreate) -> AtribuicaoRota:
-    atribuicao = AtribuicaoRota(**dados.dict())
+    payload = dados.dict()
+    if payload.get("latitude") is None or payload.get("longitude") is None:
+        funcionario = db.get(Funcionario, dados.funcionario_id)
+        if funcionario:
+            coordenadas = _obter_coordenadas_funcionario(funcionario)
+            if coordenadas:
+                payload["latitude"], payload["longitude"] = coordenadas
+
+    atribuicao = AtribuicaoRota(**payload)
     db.add(atribuicao)
     db.commit()
     db.refresh(atribuicao)

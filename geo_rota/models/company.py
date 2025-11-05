@@ -19,3 +19,4 @@ class Empresa(Base):
     veiculos = relationship("Veiculo", back_populates="empresa", cascade="all,delete-orphan")
     grupos_rota = relationship("GrupoRota", back_populates="empresa", cascade="all,delete-orphan")
     rotas = relationship("Rota", back_populates="empresa", cascade="all,delete-orphan")
+    destinos = relationship("DestinoRota", back_populates="empresa", cascade="all,delete-orphan")

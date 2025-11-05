@@ -32,6 +32,10 @@ class EscalaTrabalhoRead(EscalaTrabalhoBase):
         from_attributes = True
 
 
+class EscalaTrabalhoInput(EscalaTrabalhoBase):
+    pass
+
+
 class FuncionarioBase(BaseModel):
     nome_completo: str = Field(..., max_length=150)
     cpf: str = Field(..., max_length=14)
@@ -115,3 +119,11 @@ class FuncionarioComDetalhes(FuncionarioRead):
 
     class Config:
         from_attributes = True
+
+
+class FuncionarioCreatePayload(FuncionarioCreate):
+    escalas_trabalho: list[EscalaTrabalhoInput] = Field(default_factory=list)
+
+
+class FuncionarioUpdatePayload(FuncionarioUpdate):
+    escalas_trabalho: list[EscalaTrabalhoInput] | None = None

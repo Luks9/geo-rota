@@ -8,6 +8,7 @@ from geo_rota.models.enums import (
     StatusRotaEnum,
     TurnoTrabalhoEnum,
 )
+from geo_rota.schemas.destination import DestinoRotaRead
 
 
 class AtribuicaoRotaBase(BaseModel):
@@ -15,6 +16,8 @@ class AtribuicaoRotaBase(BaseModel):
     papel: PapelAtribuicaoRota = PapelAtribuicaoRota.PASSAGEIRO
     ordem_embarque: int | None = Field(default=None, ge=0)
     hora_embarque: str | None = Field(default=None, max_length=5)
+    latitude: float | None = Field(default=None, ge=-90, le=90)
+    longitude: float | None = Field(default=None, ge=-180, le=180)
 
 
 class AtribuicaoRotaCreate(AtribuicaoRotaBase):
@@ -102,6 +105,15 @@ class RequisicaoGerarRota(BaseModel):
     motorista_id: int | None = None
     veiculo_id: int | None = None
     modo_geracao: ModoAlgoritmoEnum = ModoAlgoritmoEnum.AUTOMATICO
+    destino_id: int | None = None
+    destino_nome: str | None = Field(default=None, max_length=120)
+    destino_logradouro: str | None = Field(default=None, max_length=150)
+    destino_numero: str | None = Field(default=None, max_length=20)
+    destino_complemento: str | None = Field(default=None, max_length=80)
+    destino_bairro: str | None = Field(default=None, max_length=80)
+    destino_cidade: str | None = Field(default=None, max_length=80)
+    destino_estado: str | None = Field(default=None, max_length=2, min_length=2)
+    destino_cep: str | None = Field(default=None, max_length=9, min_length=8)
 
 
 class RotaBase(BaseModel):
@@ -117,6 +129,7 @@ class RotaBase(BaseModel):
     distancia_total_km: float | None = Field(default=None, ge=0)
     custo_operacional_total: float | None = Field(default=None, ge=0)
     observacoes: str | None = None
+    destino_id: int | None = None
 
 
 class RotaCreate(RotaBase):
@@ -129,6 +142,7 @@ class RotaUpdate(BaseModel):
     turno: TurnoTrabalhoEnum | None = None
     status: StatusRotaEnum | None = None
     modo_geracao: ModoAlgoritmoEnum | None = None
+    destino_id: int | None = None
     veiculo_id: int | None = None
     motorista_id: int | None = None
     distancia_total_km: float | None = Field(default=None, ge=0)
@@ -140,6 +154,7 @@ class RotaRead(RotaBase):
     id: int
     criado_em: datetime
     atualizado_em: datetime
+    destino: DestinoRotaRead | None = None
     atribuicoes: list[AtribuicaoRotaRead] = Field(default_factory=list)
     funcionarios_pendentes: list[FuncionarioPendenteRotaRead] = Field(default_factory=list)
     logs_geracao: list[LogGeracaoRotaRead] = Field(default_factory=list)

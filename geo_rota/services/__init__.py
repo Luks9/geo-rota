@@ -5,6 +5,13 @@ from geo_rota.services.empresa_service import (  # noqa: F401
     obter_empresa,
     remover_empresa,
 )
+from geo_rota.services.destino_service import (  # noqa: F401
+    atualizar_destino,
+    criar_destino,
+    listar_destinos,
+    obter_destino,
+    remover_destino,
+)
 from geo_rota.services.funcionario_service import (  # noqa: F401
     adicionar_escala_trabalho,
     atualizar_indisponibilidade,

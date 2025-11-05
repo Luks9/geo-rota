@@ -5,7 +5,7 @@ import Pagination from '../components/tabela/Pagination'
 import SearchInput from '../components/tabela/SearchInput'
 import type { Funcionario } from '../services/funcionarioService'
 
-const ITEMS_PER_PAGE = 5
+const ITEMS_PER_PAGE = 10
 
 type FuncionariosTableProps = {
   funcionarios: Funcionario[]
@@ -43,8 +43,8 @@ function FuncionariosTable({ funcionarios, loading = false, onEdit, onToggleStat
   const paginated = filteredFuncionarios.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
 
   const columns = [
+    { label: 'ID', render: (f: Funcionario) => f.id },
     { label: 'Nome completo', render: (f: Funcionario) => f.nome_completo || <span className="has-text-grey">Não informado</span> },
-    { label: 'CPF', render: (f: Funcionario) => f.cpf || <span className="has-text-grey">Não informado</span> },
     { label: 'E-mail', render: (f: Funcionario) => f.email || <span className="has-text-grey">Não informado</span> },
     { label: 'Telefone', render: (f: Funcionario) => f.telefone || <span className="has-text-grey">Não informado</span> },
     { label: 'CNH', render: (f: Funcionario) => f.possui_cnh ? f.categoria_cnh ?? <span className="has-text-grey">Categoria não informada</span> : <span className="has-text-grey">Sem CNH</span> },
