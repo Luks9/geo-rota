@@ -26,6 +26,7 @@ function FuncionariosTable({ funcionarios, loading = false, onEdit, onToggleStat
         f.email?.toLowerCase().includes(lower) ||
         f.cpf?.toLowerCase().includes(lower)
     )
+    
   }, [funcionarios, search])
 
   useEffect(() => {
@@ -47,6 +48,7 @@ function FuncionariosTable({ funcionarios, loading = false, onEdit, onToggleStat
     { label: 'Nome completo', render: (f: Funcionario) => f.nome_completo || <span className="has-text-grey">Não informado</span> },
     { label: 'E-mail', render: (f: Funcionario) => f.email || <span className="has-text-grey">Não informado</span> },
     { label: 'Telefone', render: (f: Funcionario) => f.telefone || <span className="has-text-grey">Não informado</span> },
+    { label: 'CEP', render: (f: Funcionario) => f.cep || <span className="has-text-grey">Não informado</span> },
     { label: 'CNH', render: (f: Funcionario) => f.possui_cnh ? f.categoria_cnh ?? <span className="has-text-grey">Categoria não informada</span> : <span className="has-text-grey">Sem CNH</span> },
     { label: 'Apto a dirigir', render: (f: Funcionario) => (f.apto_dirigir ? 'Sim' : 'Não') },
     {

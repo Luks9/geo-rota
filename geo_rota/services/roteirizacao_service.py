@@ -15,7 +15,7 @@ from typing import Dict, List, Optional, Sequence, Tuple
 
 from geopy.exc import GeocoderServiceError
 from ortools.constraint_solver import pywrapcp, routing_enums_pb2
-from sqlalchemy import and_, func, or_
+from sqlalchemy import and_, func
 from sqlalchemy.orm import Session, aliased
 
 from geo_rota.models import (
@@ -126,6 +126,9 @@ def _filtrar_funcionarios_disponiveis(
     Busca funcionários ativos vinculados ao grupo e disponíveis no dia/turno informados.
     """
     dia = _dia_semana(data_agendada)
+    dias_programados = grupo.dias_semana_padrao or []
+    if dias_programados and dia not in dias_programados:
+        return []
     escalas = aliased(EscalaTrabalho)
     indisponibilidade = aliased(IndisponibilidadeFuncionario)
     query = (
@@ -135,10 +138,6 @@ def _filtrar_funcionarios_disponiveis(
             and_(
                 FuncionarioGrupoRota.funcionario_id == Funcionario.id,
                 FuncionarioGrupoRota.grupo_rota_id == grupo.id,
-                or_(
-                    FuncionarioGrupoRota.dia_semana.is_(None),
-                    FuncionarioGrupoRota.dia_semana == dia,
-                ),
             ),
         )
         .join(

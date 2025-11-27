@@ -30,32 +30,43 @@ const mapEscalaFormToPayload = (escala: EscalaFormValue) => ({
   hora_fim: escala.horaFim || null,
 })
 
-const toFormValues = (funcionario: FuncionarioDetalhado): FuncionarioFormValues => ({
-  empresaId: String(funcionario.empresa_id),
-  nomeCompleto: funcionario.nome_completo,
-  cpf: funcionario.cpf,
-  email: funcionario.email ?? '',
-  telefone: funcionario.telefone ?? '',
-  logradouro: funcionario.logradouro,
-  numero: funcionario.numero,
-  complemento: funcionario.complemento ?? '',
-  bairro: funcionario.bairro,
-  cidade: funcionario.cidade,
-  estado: funcionario.estado,
-  cep: funcionario.cep,
-  possuiCnh: funcionario.possui_cnh,
-  categoriaCnh: funcionario.categoria_cnh ?? '',
-  cnhValidaAte: funcionario.cnh_valida_ate ?? '',
-  aptoDirigir: funcionario.apto_dirigir,
-  ativo: funcionario.ativo,
-  escalas: funcionario.escalas_trabalho.map((escala) => ({
-    diaSemana: escala.dia_semana,
-    turno: escala.turno as 'manha' | 'tarde' | 'noite',
-    disponivel: escala.disponivel,
-    horaInicio: escala.hora_inicio ?? '',
-    horaFim: escala.hora_fim ?? '',
-  })),
+const mapGrupoRotaFormToPayload = (grupo: FuncionarioFormValues['gruposRota'][number]) => ({
+  grupo_rota_id: grupo.grupoId,
 })
+
+const toFormValues = (funcionario: FuncionarioDetalhado): FuncionarioFormValues => {
+  const gruposRota = funcionario.grupos_rota.map((vinculo) => ({
+    grupoId: vinculo.grupo_rota_id,
+  }))
+
+  return {
+    empresaId: String(funcionario.empresa_id),
+    nomeCompleto: funcionario.nome_completo,
+    cpf: funcionario.cpf,
+    email: funcionario.email ?? '',
+    telefone: funcionario.telefone ?? '',
+    logradouro: funcionario.logradouro,
+    numero: funcionario.numero,
+    complemento: funcionario.complemento ?? '',
+    bairro: funcionario.bairro,
+    cidade: funcionario.cidade,
+    estado: funcionario.estado,
+    cep: funcionario.cep,
+    possuiCnh: funcionario.possui_cnh,
+    categoriaCnh: funcionario.categoria_cnh ?? '',
+    cnhValidaAte: funcionario.cnh_valida_ate ?? '',
+    aptoDirigir: funcionario.apto_dirigir,
+    ativo: funcionario.ativo,
+    escalas: funcionario.escalas_trabalho.map((escala) => ({
+      diaSemana: escala.dia_semana,
+      turno: escala.turno as 'manha' | 'tarde' | 'noite',
+      disponivel: escala.disponivel,
+      horaInicio: escala.hora_inicio ?? '',
+      horaFim: escala.hora_fim ?? '',
+    })),
+    gruposRota,
+  }
+}
 
 const buildCreatePayload = (values: FuncionarioFormValues): FuncionarioCreatePayload => ({
   empresa_id: Number(values.empresaId),
@@ -76,6 +87,7 @@ const buildCreatePayload = (values: FuncionarioFormValues): FuncionarioCreatePay
   apto_dirigir: values.aptoDirigir,
   ativo: values.ativo,
   escalas_trabalho: values.escalas.map(mapEscalaFormToPayload),
+  grupos_rota: values.gruposRota.map(mapGrupoRotaFormToPayload),
 })
 
 const buildUpdatePayload = (values: FuncionarioFormValues): FuncionarioUpdatePayload => ({
@@ -95,6 +107,7 @@ const buildUpdatePayload = (values: FuncionarioFormValues): FuncionarioUpdatePay
   apto_dirigir: values.aptoDirigir,
   ativo: values.ativo,
   escalas_trabalho: values.escalas.map(mapEscalaFormToPayload),
+  grupos_rota: values.gruposRota.map(mapGrupoRotaFormToPayload),
 })
 
 function FuncionarioFormPage({ mode }: FuncionarioFormPageProps) {

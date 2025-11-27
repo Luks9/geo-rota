@@ -19,6 +19,7 @@ export type Funcionario = {
   cnh_valida_ate: string | null
   apto_dirigir: boolean
   ativo: boolean
+  grupos_rota?: FuncionarioGrupoRota[]
 }
 
 export type EscalaTrabalho = {
@@ -48,14 +49,27 @@ export type IndisponibilidadeFuncionario = {
   data_fim: string
 }
 
+export type FuncionarioGrupoRota = {
+  id: number
+  funcionario_id: number
+  grupo_rota_id: number
+  grupo_nome?: string | null
+}
+
+export type FuncionarioGrupoRotaInput = {
+  grupo_rota_id: number
+}
+
 export type FuncionarioDetalhado = Funcionario & {
   escalas_trabalho: EscalaTrabalho[]
   indisponibilidades: IndisponibilidadeFuncionario[]
+  grupos_rota: FuncionarioGrupoRota[]
 }
 
 export type FuncionarioCreatePayload = Omit<Funcionario, 'id'> & {
   ativo?: boolean
   escalas_trabalho?: EscalaTrabalhoInput[]
+  grupos_rota?: FuncionarioGrupoRotaInput[]
 }
 
 export type FuncionarioUpdatePayload = Partial<{
@@ -75,6 +89,7 @@ export type FuncionarioUpdatePayload = Partial<{
   apto_dirigir: boolean
   ativo: boolean
   escalas_trabalho: EscalaTrabalhoInput[]
+  grupos_rota: FuncionarioGrupoRotaInput[]
 }>
 
 export type FuncionarioListParams = {
@@ -89,6 +104,10 @@ const mapEscalaPayload = (escala: EscalaTrabalhoInput) => ({
   hora_fim: escala.hora_fim ?? null,
 })
 
+const mapGrupoRotaPayload = (grupo: FuncionarioGrupoRotaInput) => ({
+  grupo_rota_id: grupo.grupo_rota_id,
+})
+
 const mapCreatePayload = (payload: FuncionarioCreatePayload) => {
   const body: Record<string, unknown> = { ...payload }
   body.email = payload.email ?? null
@@ -98,6 +117,7 @@ const mapCreatePayload = (payload: FuncionarioCreatePayload) => {
   body.cnh_valida_ate = payload.cnh_valida_ate ?? null
   body.ativo = payload.ativo ?? true
   body.escalas_trabalho = (payload.escalas_trabalho ?? []).map(mapEscalaPayload)
+  body.grupos_rota = (payload.grupos_rota ?? []).map(mapGrupoRotaPayload)
   return body
 }
 
@@ -108,6 +128,8 @@ const mapUpdatePayload = (payload: FuncionarioUpdatePayload) => {
     if (value !== undefined) {
       if (key === 'escalas_trabalho' && Array.isArray(value)) {
         body[key] = value.map(mapEscalaPayload)
+      } else if (key === 'grupos_rota' && Array.isArray(value)) {
+        body[key] = value.map(mapGrupoRotaPayload)
       } else {
         body[key] = value
       }

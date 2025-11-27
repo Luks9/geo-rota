@@ -5,6 +5,9 @@ import AppLayout from './layout/AppLayout'
 import Home from './pages/Home'
 import Login from './pages/Login'
 import { FuncionarioFormPage, FuncionariosPage } from './pages/funcionarios'
+import { GrupoRotaFormPage, GruposRotaPage } from './pages/gruposRota'
+import { GerarRotaAutomaticaPage } from './pages/rotasAutomaticas'
+import { RotasHistoricoPage } from './pages/rotasHistorico'
 
 function App() {
   return (
@@ -18,6 +21,15 @@ function App() {
               <Route index element={<FuncionariosPage />} />
               <Route path="criar" element={<FuncionarioFormPage mode="create" />} />
               <Route path="editar/:funcionarioId" element={<FuncionarioFormPage mode="edit" />} />
+            </Route>
+            <Route path="/cadastro/grupos-rota">
+              <Route index element={<GruposRotaPage />} />
+              <Route path="criar" element={<GrupoRotaFormPage mode="create" />} />
+              <Route path="editar/:grupoId" element={<GrupoRotaFormPage mode="edit" />} />
+            </Route>
+            <Route path="/operacao/rotas">
+              <Route index element={<GerarRotaAutomaticaPage />} />
+              <Route path="historico" element={<RotasHistoricoPage />} />
             </Route>
           </Route>
         </Route>

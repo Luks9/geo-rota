@@ -28,6 +28,20 @@ const sections: MenuSection[] = [
         to: '/cadastro',
         children: [
           { label: 'Funcionários', to: '/cadastro/funcionarios' },
+          { label: 'Grupos de rota', to: '/cadastro/grupos-rota' },
+        ],
+      },
+    ],
+  },
+  {
+    label: 'Rotas',
+    items: [
+      {
+        label: 'Operação',
+        to: '/operacao',
+        children: [
+          { label: 'Rotas automáticas', to: '/operacao/rotas' },
+          { label: 'Histórico de rotas', to: '/operacao/rotas/historico' },
         ],
       },
     ],

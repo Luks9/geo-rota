@@ -1,8 +1,8 @@
 from typing import Any, Iterable, Optional
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
-from geo_rota.models import EscalaTrabalho, Funcionario, IndisponibilidadeFuncionario
+from geo_rota.models import EscalaTrabalho, Funcionario, FuncionarioGrupoRota, IndisponibilidadeFuncionario
 from geo_rota.schemas import (
     EscalaTrabalhoCreate,
     EscalaTrabalhoInput,
@@ -32,9 +32,55 @@ def _criar_escalas_para_funcionario(
         db.add(escala)
 
 
+def _normalizar_grupos_rota(
+    vinculos: Iterable[Any],
+) -> list[dict[str, Any]]:
+    normalizados: list[dict[str, Any]] = []
+    grupos_utilizados: set[int] = set()
+
+    for vinculo_input in vinculos:
+        if hasattr(vinculo_input, "dict"):
+            vinculo_dados = vinculo_input.dict()
+        else:
+            vinculo_dados = dict(vinculo_input)
+
+        grupo_id = vinculo_dados.get("grupo_rota_id")
+        if grupo_id is None:
+            raise ValueError("Informe o grupo de rota para vincular o funcionário.")
+
+        try:
+            grupo_id_int = int(grupo_id)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("Informe um grupo de rota válido para o vínculo do funcionário.") from exc
+
+        if grupo_id_int in grupos_utilizados:
+            raise ValueError("Já existe um vínculo com este grupo de rota para o funcionário.")
+        grupos_utilizados.add(grupo_id_int)
+
+        normalizados.append({"grupo_rota_id": grupo_id_int})
+
+    return normalizados
+
+
+def _criar_grupos_rota_para_funcionario(
+    db: Session,
+    funcionario_id: int,
+    vinculos: Iterable[Any],
+) -> None:
+    normalizados = _normalizar_grupos_rota(vinculos)
+    for vinculo in normalizados:
+        db.add(
+            FuncionarioGrupoRota(
+                funcionario_id=funcionario_id,
+                **vinculo,
+            )
+        )
+
+
 def criar_funcionario(db: Session, dados: FuncionarioCreatePayload) -> Funcionario:
     payload = dados.dict()
     escalas = payload.pop("escalas_trabalho", [])
+    grupos_rota = payload.pop("grupos_rota", [])
 
     funcionario = Funcionario(**payload)
     db.add(funcionario)
@@ -42,6 +88,8 @@ def criar_funcionario(db: Session, dados: FuncionarioCreatePayload) -> Funcionar
 
     if escalas:
         _criar_escalas_para_funcionario(db, funcionario.id, escalas)
+    if grupos_rota:
+        _criar_grupos_rota_para_funcionario(db, funcionario.id, grupos_rota)
 
     db.commit()
     db.refresh(funcionario)
@@ -49,14 +97,21 @@ def criar_funcionario(db: Session, dados: FuncionarioCreatePayload) -> Funcionar
 
 
 def listar_funcionarios(db: Session, empresa_id: Optional[int] = None) -> Iterable[Funcionario]:
-    consulta = db.query(Funcionario)
+    consulta = db.query(Funcionario).options(
+        selectinload(Funcionario.participacoes_grupo_rota).selectinload(FuncionarioGrupoRota.grupo_rota)
+    )
     if empresa_id is not None:
         consulta = consulta.filter(Funcionario.empresa_id == empresa_id)
     return consulta.order_by(Funcionario.nome_completo).all()
 
 
 def obter_funcionario(db: Session, funcionario_id: int) -> Optional[Funcionario]:
-    return db.query(Funcionario).filter(Funcionario.id == funcionario_id).first()
+    return (
+        db.query(Funcionario)
+        .options(selectinload(Funcionario.participacoes_grupo_rota).selectinload(FuncionarioGrupoRota.grupo_rota))
+        .filter(Funcionario.id == funcionario_id)
+        .first()
+    )
 
 
 def atualizar_funcionario(
@@ -70,6 +125,7 @@ def atualizar_funcionario(
 
     payload = dados.dict(exclude_unset=True)
     escalas = payload.pop("escalas_trabalho", None)
+    grupos_rota = payload.pop("grupos_rota", None)
 
     for campo, valor in payload.items():
         setattr(funcionario, campo, valor)
@@ -80,6 +136,12 @@ def atualizar_funcionario(
         db.flush()
         if escalas:
             _criar_escalas_para_funcionario(db, funcionario.id, escalas)
+    if grupos_rota is not None:
+        for vinculo in list(funcionario.participacoes_grupo_rota):
+            db.delete(vinculo)
+        db.flush()
+        if grupos_rota:
+            _criar_grupos_rota_para_funcionario(db, funcionario.id, grupos_rota)
 
     db.commit()
     db.refresh(funcionario)

@@ -3,6 +3,7 @@ from datetime import date, time
 from pydantic import BaseModel, EmailStr, Field
 
 from geo_rota.models.enums import TipoIndisponibilidadeEnum, TurnoTrabalhoEnum
+from geo_rota.schemas.route_group import FuncionarioGrupoRotaInput, FuncionarioGrupoRotaRead
 
 
 class EscalaTrabalhoBase(BaseModel):
@@ -82,6 +83,7 @@ class FuncionarioUpdate(BaseModel):
 class FuncionarioRead(FuncionarioBase):
     id: int
     empresa_id: int
+    grupos_rota: list[FuncionarioGrupoRotaRead] = Field(default_factory=list)
 
     class Config:
         from_attributes = True
@@ -123,7 +125,9 @@ class FuncionarioComDetalhes(FuncionarioRead):
 
 class FuncionarioCreatePayload(FuncionarioCreate):
     escalas_trabalho: list[EscalaTrabalhoInput] = Field(default_factory=list)
+    grupos_rota: list[FuncionarioGrupoRotaInput] = Field(default_factory=list)
 
 
 class FuncionarioUpdatePayload(FuncionarioUpdate):
     escalas_trabalho: list[EscalaTrabalhoInput] | None = None
+    grupos_rota: list[FuncionarioGrupoRotaInput] | None = None

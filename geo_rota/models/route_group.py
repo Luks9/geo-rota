@@ -1,12 +1,4 @@
-from sqlalchemy import (
-    Column,
-    Enum as SAEnum,
-    ForeignKey,
-    Integer,
-    String,
-    Text,
-    UniqueConstraint,
-)
+from sqlalchemy import Column, Enum as SAEnum, ForeignKey, Integer, JSON, String, Text, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from geo_rota.models.enums import RegimeRotaEnum
@@ -27,7 +19,7 @@ class GrupoRota(Base):
         default=RegimeRotaEnum.DIARIO,
         nullable=False,
     )
-    dia_semana_padrao = Column(Integer, nullable=True)
+    dias_semana_padrao = Column(JSON, nullable=False, default=list)
     descricao = Column(Text, nullable=True)
 
     empresa = relationship("Empresa", back_populates="grupos_rota")

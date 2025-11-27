@@ -186,7 +186,7 @@ def seed_grupo(session: Session, empresa: Empresa):
         nome="Rotina Semanal - Teste Rotas",
         defaults={
             "tipo_regime": RegimeRotaEnum.DIARIO,
-            "dia_semana_padrao": 0,
+            "dias_semana_padrao": [0, 1, 2, 3, 4],
             "descricao": "Grupo para teste de cálculo de rotas com indisponibilidades",
         },
     )
@@ -195,14 +195,12 @@ def seed_grupo(session: Session, empresa: Empresa):
 
 def seed_vinculos(session: Session, grupo, funcionarios):
     for f in funcionarios:
-        for dia in range(0, 5):
-            get_or_create(
-                session,
-                FuncionarioGrupoRota,
-                funcionario_id=f.id,
-                grupo_rota_id=grupo.id,
-                dia_semana=dia,
-            )
+        get_or_create(
+            session,
+            FuncionarioGrupoRota,
+            funcionario_id=f.id,
+            grupo_rota_id=grupo.id,
+        )
     session.commit()
 
 

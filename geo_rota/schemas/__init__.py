@@ -35,6 +35,7 @@ from geo_rota.schemas.route import (  # noqa: F401
 )
 from geo_rota.schemas.route_group import (  # noqa: F401
     FuncionarioGrupoRotaCreate,
+    FuncionarioGrupoRotaInput,
     FuncionarioGrupoRotaRead,
     GrupoRotaCreate,
     GrupoRotaRead,

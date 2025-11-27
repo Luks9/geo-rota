@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react'
 
 import type { Empresa } from '../services/empresaService'
+import grupoRotaService, { type GrupoRota } from '../../gruposRota/services/grupoRotaService'
 
 export type EscalaFormValue = {
   diaSemana: number
@@ -8,6 +9,10 @@ export type EscalaFormValue = {
   disponivel: boolean
   horaInicio: string
   horaFim: string
+}
+
+export type GrupoRotaFormValue = {
+  grupoId: number
 }
 
 export type FuncionarioFormValues = {
@@ -29,6 +34,7 @@ export type FuncionarioFormValues = {
   aptoDirigir: boolean
   ativo: boolean
   escalas: EscalaFormValue[]
+  gruposRota: GrupoRotaFormValue[]
 }
 
 type FuncionarioFormProps = {
@@ -59,6 +65,7 @@ const defaultValues: FuncionarioFormValues = {
   aptoDirigir: false,
   ativo: true,
   escalas: [],
+  gruposRota: [],
 }
 
 
@@ -79,6 +86,7 @@ const TURNO_OPTIONS = [
 ]
 
 const emptyEscalaDraft = { diaSemana: '', turno: '', disponivel: true, horaInicio: '', horaFim: '' } as const
+const emptyGrupoRotaDraft = { grupoId: '' } as const
 
 type FormErrors = Partial<Record<keyof FuncionarioFormValues, string>>
 
@@ -89,12 +97,21 @@ function FuncionarioForm({ mode, empresas, initialValues, loading = false, onSub
   const [errors, setErrors] = useState<FormErrors>({})
 
   const [escalaDraft, setEscalaDraft] = useState<typeof emptyEscalaDraft>(emptyEscalaDraft)
+  const [grupoRotaDraft, setGrupoRotaDraft] = useState<typeof emptyGrupoRotaDraft>(emptyGrupoRotaDraft)
+  const [gruposDisponiveis, setGruposDisponiveis] = useState<GrupoRota[]>([])
+  const [loadingGruposRota, setLoadingGruposRota] = useState(false)
+  const [erroGruposRota, setErroGruposRota] = useState<string | null>(null)
 
   useEffect(() => {
     if (initialValues) {
       setValues(initialValues)
       setErrors({})
       setEscalaDraft(emptyEscalaDraft)
+      if (initialValues.gruposRota.length > 0) {
+        setGrupoRotaDraft({ grupoId: String(initialValues.gruposRota[0].grupoId) })
+      } else {
+        setGrupoRotaDraft(emptyGrupoRotaDraft)
+      }
       return
     }
 
@@ -104,7 +121,42 @@ function FuncionarioForm({ mode, empresas, initialValues, loading = false, onSub
     }))
     setErrors({})
     setEscalaDraft(emptyEscalaDraft)
+    setGrupoRotaDraft(emptyGrupoRotaDraft)
   }, [empresas, initialValues])
+
+  useEffect(() => {
+    const empresaIdNumero = Number(values.empresaId)
+    if (!values.empresaId || Number.isNaN(empresaIdNumero)) {
+      setGruposDisponiveis([])
+      setErroGruposRota(null)
+      setLoadingGruposRota(false)
+      return
+    }
+
+    let ativo = true
+    setLoadingGruposRota(true)
+    setErroGruposRota(null)
+
+    void grupoRotaService
+      .listar({ empresaId: empresaIdNumero })
+      .then((lista) => {
+        if (!ativo) return
+        setGruposDisponiveis(lista)
+      })
+      .catch(() => {
+        if (!ativo) return
+        setErroGruposRota('Não foi possivel carregar os grupos da empresa selecionada.')
+        setGruposDisponiveis([])
+      })
+      .finally(() => {
+        if (!ativo) return
+        setLoadingGruposRota(false)
+      })
+
+    return () => {
+      ativo = false
+    }
+  }, [values.empresaId])
 
   const titleMessage = useMemo(() => {
     if (mode === 'create') {
@@ -118,6 +170,31 @@ function FuncionarioForm({ mode, empresas, initialValues, loading = false, onSub
 
   const getTurnoLabel = (turno: string) =>
     TURNO_OPTIONS.find((option) => option.value === turno)?.label ?? turno
+
+  const getGrupoNome = (grupoId: number) =>
+    gruposDisponiveis.find((grupo) => grupo.id === grupoId)?.nome ?? `Grupo #${grupoId}`
+
+  const grupoSelecionadoAtual = useMemo(
+    () => gruposDisponiveis.find((grupo) => String(grupo.id) === grupoRotaDraft.grupoId),
+    [gruposDisponiveis, grupoRotaDraft.grupoId]
+  )
+
+  const formatarDias = (dias: number[]) => {
+    if (dias.length === 0) {
+      return 'Todos os dias'
+    }
+    return dias
+      .slice()
+      .sort((a, b) => a - b)
+      .map((dia) => getDiaSemanaLabel(dia))
+      .join(', ')
+  }
+
+  const formatDiasGrupo = (grupoId: number) => {
+    const grupo = gruposDisponiveis.find((item) => item.id === grupoId)
+    const dias = grupo?.dias_semana_padrao ?? []
+    return formatarDias(dias)
+  }
 
   const handleEscalaDraftChange =
     (field: 'diaSemana' | 'turno' | 'horaInicio' | 'horaFim') =>
@@ -181,11 +258,82 @@ function FuncionarioForm({ mode, empresas, initialValues, loading = false, onSub
     }))
   }
 
+  const handleGrupoRotaDraftChange =
+    (field: 'grupoId') =>
+    (event: ChangeEvent<HTMLSelectElement>) => {
+      const { value } = event.target
+      setGrupoRotaDraft((prev) => ({ ...prev, [field]: value }))
+      if (errors.gruposRota) {
+        setErrors((prev) => {
+          const next = { ...prev }
+          delete next.gruposRota
+          return next
+        })
+      }
+    }
+
+  const handleAddGrupoRota = () => {
+    if (!values.empresaId) {
+      setErrors((prev) => ({ ...prev, gruposRota: 'Selecione uma empresa para carregar os grupos.' }))
+      return
+    }
+
+    if (!grupoRotaDraft.grupoId) {
+      setErrors((prev) => ({ ...prev, gruposRota: 'Selecione um grupo de rota.' }))
+      return
+    }
+
+    const grupoIdNumero = Number(grupoRotaDraft.grupoId)
+    if (Number.isNaN(grupoIdNumero)) {
+      setErrors((prev) => ({ ...prev, gruposRota: 'Grupo de rota inválido.' }))
+      return
+    }
+
+    const grupoJaExistente = values.gruposRota.some((vinculo) => vinculo.grupoId === grupoIdNumero)
+    if (grupoJaExistente) {
+      setErrors((prev) => ({ ...prev, gruposRota: 'Este grupo já foi adicionado. Remova para editar.' }))
+      return
+    }
+
+    setValues((prev) => ({
+      ...prev,
+      gruposRota: [
+        ...prev.gruposRota,
+        {
+          grupoId: grupoIdNumero,
+        },
+      ],
+    }))
+    setGrupoRotaDraft(emptyGrupoRotaDraft)
+    setErrors((prev) => {
+      if (!prev.gruposRota) return prev
+      const next = { ...prev }
+      delete next.gruposRota
+      return next
+    })
+  }
+
+  const handleRemoveGrupoRota = (index: number) => {
+    setValues((prev) => ({
+      ...prev,
+      gruposRota: prev.gruposRota.filter((_, itemIndex) => itemIndex !== index),
+    }))
+  }
+
   const handleFieldChange =
     (field: keyof FuncionarioFormValues) =>
     (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
       const { value } = event.target
-      setValues((prev) => ({ ...prev, [field]: value }))
+      setValues((prev) => {
+        const next = { ...prev, [field]: value }
+        if (field === 'empresaId') {
+          next.gruposRota = []
+        }
+        return next
+      })
+      if (field === 'empresaId') {
+        setGrupoRotaDraft(emptyGrupoRotaDraft)
+      }
       if (errors[field]) {
         setErrors((prev) => {
           const next = { ...prev }
@@ -316,6 +464,114 @@ function FuncionarioForm({ mode, empresas, initialValues, loading = false, onSub
               </div>
             </div>
             {errors.empresaId && <p className="help is-danger">{errors.empresaId}</p>}
+          </div>
+        </div>
+
+        <div className="column is-full">
+          <div className="box">
+            <h2 className="title is-6">Grupos de rota</h2>
+            {!values.empresaId ? (
+              <p className="has-text-grey">Selecione uma empresa para carregar os grupos disponíveis.</p>
+            ) : loadingGruposRota ? (
+              <p>Carregando grupos...</p>
+            ) : (
+              <>
+                <div className="columns is-multiline">
+                  <div className="column is-6">
+                    <div className="field">
+                      <label className="label" htmlFor="grupoRotaSelect">
+                        Grupo
+                      </label>
+                      <div className="control">
+                        <div className="select is-fullwidth">
+                          <select
+                            id="grupoRotaSelect"
+                            value={grupoRotaDraft.grupoId}
+                            onChange={handleGrupoRotaDraftChange('grupoId')}
+                            disabled={loading || gruposDisponiveis.length === 0}
+                          >
+                            <option value="">Selecione</option>
+                            {gruposDisponiveis.map((grupo) => (
+                              <option key={grupo.id} value={grupo.id}>
+                                {grupo.nome}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="column is-4">
+                    <div className="field">
+                      <label className="label">Dias fixos do grupo</label>
+                      <div className="control">
+                        <p className="tag is-light">
+                          {grupoSelecionadoAtual ? formatarDias(grupoSelecionadoAtual.dias_semana_padrao ?? []) : 'Selecione um grupo'}
+                        </p>
+                      </div>
+                      <p className="help">Definido no cadastro do grupo.</p>
+                    </div>
+                  </div>
+
+                  <div className="column is-2">
+                    <div className="field">
+                      <label className="label">&nbsp;</label>
+                      <div className="control">
+                        <button
+                          type="button"
+                          className="button is-link is-light is-fullwidth"
+                          onClick={handleAddGrupoRota}
+                          disabled={loading || gruposDisponiveis.length === 0}
+                        >
+                          Adicionar grupo
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {errors.gruposRota && <p className="help is-danger">{errors.gruposRota}</p>}
+                {erroGruposRota && <p className="help is-danger">{erroGruposRota}</p>}
+                {gruposDisponiveis.length === 0 && !erroGruposRota && (
+                  <p className="help">Nenhum grupo cadastrado para esta empresa.</p>
+                )}
+
+                {values.gruposRota.length > 0 && (
+                  <div className="table-container mt-3">
+                    <table className="table is-fullwidth is-striped is-hoverable">
+                      <thead>
+                        <tr>
+                          <th>Grupo</th>
+                          <th>Dias</th>
+                          <th className="has-text-right">Ações</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {values.gruposRota.map((vinculo, index) => (
+                          <tr key={vinculo.grupoId}>
+                            <td>{getGrupoNome(vinculo.grupoId)}</td>
+                            <td>{formatDiasGrupo(vinculo.grupoId)}</td>
+                            <td className="has-text-right">
+                              <button
+                                type="button"
+                                className="button is-small is-danger is-light"
+                                onClick={() => handleRemoveGrupoRota(index)}
+                                disabled={loading}
+                              >
+                                <span className="icon is-small">
+                                  <i className="fas fa-trash-alt" aria-hidden="true" />
+                                </span>
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </div>
 

@@ -181,7 +181,7 @@ def seed_grupos_rota(session: Session, empresa: Empresa) -> GrupoRota:
         nome="Terça a Quinta",
         defaults={
             "tipo_regime": RegimeRotaEnum.EMBARQUE,
-            "dia_semana_padrao": 1,  # terça
+            "dias_semana_padrao": [1, 2, 3],  # terça a quinta
             "descricao": "Grupo de embarque terça a quinta",
         },
     )
@@ -189,16 +189,13 @@ def seed_grupos_rota(session: Session, empresa: Empresa) -> GrupoRota:
 
 
 def seed_vinculos_grupo(session: Session, grupo: GrupoRota, funcionarios: list[Funcionario]) -> None:
-    dias = [1, 2, 3]  # terça a quinta
     for funcionario in funcionarios:
-        for dia in dias:
-            get_or_create(
-                session,
-                FuncionarioGrupoRota,
-                funcionario_id=funcionario.id,
-                grupo_rota_id=grupo.id,
-                dia_semana=dia,
-            )
+        get_or_create(
+            session,
+            FuncionarioGrupoRota,
+            funcionario_id=funcionario.id,
+            grupo_rota_id=grupo.id,
+        )
     session.commit()
 
 

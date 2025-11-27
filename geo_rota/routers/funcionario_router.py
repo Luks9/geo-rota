@@ -46,7 +46,10 @@ def criar(
     _: Usuario = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> FuncionarioComDetalhes:
-    return criar_funcionario(db, dados)
+    try:
+        return criar_funcionario(db, dados)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
 
 @router.get("/", response_model=List[FuncionarioRead])
@@ -72,7 +75,10 @@ def atualizar(
     _: Usuario = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> FuncionarioComDetalhes:
-    funcionario = atualizar_funcionario(db, funcionario_id, dados)
+    try:
+        funcionario = atualizar_funcionario(db, funcionario_id, dados)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     if not funcionario:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Funcionário não encontrado")
     return funcionario

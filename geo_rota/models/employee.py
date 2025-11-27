@@ -66,3 +66,11 @@ class Funcionario(Base):
         back_populates="funcionario",
         cascade="all,delete-orphan",
     )
+
+    @property
+    def grupos_rota(self):
+        return self.participacoes_grupo_rota
+
+    @grupos_rota.setter
+    def grupos_rota(self, value):
+        self.participacoes_grupo_rota = value
