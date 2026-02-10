@@ -1,0 +1,36 @@
+src/hooks/useRoutePolyline.ts(16,28): error TS2339: Property 'latitude' does not exist on type 'DestinoResumo'.
+src/hooks/useRoutePolyline.ts(16,56): error TS2339: Property 'longitude' does not exist on type 'DestinoResumo'.
+src/hooks/useRoutePolyline.ts(17,28): error TS2339: Property 'latitude' does not exist on type 'DestinoResumo'.
+src/hooks/useRoutePolyline.ts(17,46): error TS2339: Property 'longitude' does not exist on type 'DestinoResumo'.
+src/pages/funcionarios/components/FuncionarioForm.tsx(120,16): error TS6133: 'prev' is declared but its value is never read.
+src/pages/funcionarios/components/FuncionariosTable.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/pages/funcionarios/components/tabela/Pagination.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/pages/funcionarios/components/tabela/SearchInput.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/pages/funcionarios/FuncionarioFormPage.tsx(91,3): error TS2322: Type '{ grupo_rota_id: number; }[]' is not assignable to type 'FuncionarioGrupoRota[] & FuncionarioGrupoRotaInput[]'.
+  Type '{ grupo_rota_id: number; }[]' is not assignable to type 'FuncionarioGrupoRota[]'.
+    Type '{ grupo_rota_id: number; }' is missing the following properties from type 'FuncionarioGrupoRota': id, funcionario_id
+src/pages/funcionarios/services/funcionarioService.ts(130,31): error TS2345: Argument of type '(escala: EscalaTrabalhoInput) => { dia_semana: number; turno: string; disponivel: boolean; hora_inicio: string | null; hora_fim: string | null; }' is not assignable to parameter of type '((value: FuncionarioGrupoRotaInput, index: number, array: FuncionarioGrupoRotaInput[]) => { dia_semana: number; turno: string; disponivel: boolean; hora_inicio: string | null; hora_fim: string | null; }) & ((value: EscalaTrabalhoInput, index: number, array: EscalaTrabalhoInput[]) => { ...; })'.
+  Type '(escala: EscalaTrabalhoInput) => { dia_semana: number; turno: string; disponivel: boolean; hora_inicio: string | null; hora_fim: string | null; }' is not assignable to type '(value: FuncionarioGrupoRotaInput, index: number, array: FuncionarioGrupoRotaInput[]) => { dia_semana: number; turno: string; disponivel: boolean; hora_inicio: string | null; hora_fim: string | null; }'.
+    Types of parameters 'escala' and 'value' are incompatible.
+      Type 'FuncionarioGrupoRotaInput' is missing the following properties from type 'EscalaTrabalhoInput': dia_semana, turno, disponivel, hora_inicio, hora_fim
+src/pages/funcionarios/services/funcionarioService.ts(132,31): error TS2345: Argument of type '(grupo: FuncionarioGrupoRotaInput) => { grupo_rota_id: number; }' is not assignable to parameter of type '((value: FuncionarioGrupoRotaInput, index: number, array: FuncionarioGrupoRotaInput[]) => { grupo_rota_id: number; }) & ((value: EscalaTrabalhoInput, index: number, array: EscalaTrabalhoInput[]) => { ...; })'.
+  Type '(grupo: FuncionarioGrupoRotaInput) => { grupo_rota_id: number; }' is not assignable to type '(value: EscalaTrabalhoInput, index: number, array: EscalaTrabalhoInput[]) => { grupo_rota_id: number; }'.
+    Types of parameters 'grupo' and 'value' are incompatible.
+      Property 'grupo_rota_id' is missing in type 'EscalaTrabalhoInput' but required in type 'FuncionarioGrupoRotaInput'.
+src/pages/gruposRota/components/GrupoRotaForm.tsx(56,16): error TS6133: 'prev' is declared but its value is never read.
+src/pages/rotasAutomaticas/components/RouteMap.tsx(1,15): error TS7016: Could not find a declaration file for module 'leaflet'. 'C:/Users/Lucas Alves/Documents/Scripts/geo-rota/frontend/geo-rota/node_modules/.pnpm/leaflet@1.9.4/node_modules/leaflet/dist/leaflet-src.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/leaflet` if it exists or add a new declaration (.d.ts) file containing `declare module 'leaflet';`
+src/pages/rotasAutomaticas/components/RouteMap.tsx(38,9): error TS2322: Type '{ children: (false | Element | (Element | null)[] | null)[]; center: [number, number]; zoom: number; style: { height: string; width: string; }; scrollWheelZoom: boolean; doubleClickZoom: boolean; }' is not assignable to type 'IntrinsicAttributes & MapContainerProps & RefAttributes<LeafletMap>'.
+  Property 'center' does not exist on type 'IntrinsicAttributes & MapContainerProps & RefAttributes<LeafletMap>'.
+src/pages/rotasAutomaticas/components/RouteMap.tsx(45,11): error TS2322: Type '{ attribution: string; url: string; }' is not assignable to type 'IntrinsicAttributes & TileLayerProps & RefAttributes<LeafletTileLayer>'.
+  Property 'attribution' does not exist on type 'IntrinsicAttributes & TileLayerProps & RefAttributes<LeafletTileLayer>'.
+src/pages/rotasAutomaticas/components/RouteMap.tsx(48,37): error TS2322: Type '{ positions: [number, number][]; color: string; }' is not assignable to type 'IntrinsicAttributes & PolylineProps & RefAttributes<LeafletPolyline<any, any>>'.
+  Property 'color' does not exist on type 'IntrinsicAttributes & PolylineProps & RefAttributes<LeafletPolyline<any, any>>'.
+src/pages/rotasAutomaticas/components/RouteMap.tsx(72,39): error TS2339: Property 'latitude' does not exist on type 'DestinoResumo'.
+src/pages/rotasAutomaticas/components/RouteMap.tsx(72,72): error TS2339: Property 'longitude' does not exist on type 'DestinoResumo'.
+src/pages/rotasAutomaticas/components/RouteMap.tsx(73,43): error TS2339: Property 'latitude' does not exist on type 'DestinoResumo'.
+src/pages/rotasAutomaticas/components/RouteMap.tsx(73,66): error TS2339: Property 'longitude' does not exist on type 'DestinoResumo'.
+src/pages/rotasAutomaticas/GerarRotaAutomaticaPage.tsx(2,15): error TS7016: Could not find a declaration file for module 'leaflet'. 'C:/Users/Lucas Alves/Documents/Scripts/geo-rota/frontend/geo-rota/node_modules/.pnpm/leaflet@1.9.4/node_modules/leaflet/dist/leaflet-src.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/leaflet` if it exists or add a new declaration (.d.ts) file containing `declare module 'leaflet';`
+src/pages/rotasAutomaticas/GerarRotaAutomaticaPage.tsx(4,10): error TS1484: 'ChangeEvent' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/pages/rotasAutomaticas/GerarRotaAutomaticaPage.tsx(4,23): error TS1484: 'FormEvent' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.

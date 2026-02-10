@@ -1,0 +1,135 @@
+/* Sidebar */
+.sidebar {
+  width: 208px;
+  height: 100vh;
+  background: linear-gradient(145deg, #1f64a9, #012140);
+  padding: 1rem;
+  color: #e4e7eb;
+  position: fixed;
+  top: 0;
+  left: 0;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+  border-radius: 0 10px 10px 0;
+  transition: width 0.3s ease;
+  overflow-y: auto;
+  z-index: 1000;
+}
+
+.sidebar:hover {
+  width: 220px;
+}
+
+/* Sidebar Content */
+.sidebar-content {
+  margin-top: 2rem;
+}
+
+/* Menu Label */
+.menu-label {
+  font-size: 0.75rem;
+  color: #a1a7ad;
+  margin-bottom: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05rem;
+}
+
+/* Menu List */
+.menu-list {
+  list-style: none;
+  padding: 0;
+}
+
+.menu-list li {
+  margin-bottom: 0.5rem;
+}
+
+/* Menu Links and Buttons */
+.menu-list li a,
+.menu-list li button {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  color: #e4e7eb;
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  font-size: 0.95rem;
+  text-decoration: none;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.menu-list li a:hover,
+.menu-list li button:hover {
+  background: linear-gradient(145deg, #0078ff, #005bbf);
+  color: #ffffff;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transform: translateX(5px);
+}
+
+.menu-list > li > a.active {
+  background: linear-gradient(145deg, #0078ff, #005bbf);
+  color: #ffffff;
+  font-weight: bold;
+}
+
+/* Submenu (hierarchy styling) */
+.menu-list .submenu {
+  padding-left: 1.25rem;
+  margin-top: 0.25rem;
+  transition: max-height 0.3s ease, opacity 0.3s ease;
+  overflow: hidden;
+  font-size: 0.85rem; /* menor */
+  opacity: 0.9;
+}
+
+.menu-list .submenu li {
+  margin-bottom: 0.25rem;
+}
+
+.menu-list .submenu li a {
+  padding: 0.35rem 1rem;
+  border-radius: 6px;
+  color: #cfd4da;
+  background: transparent;
+  font-weight: 500;
+  transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+.menu-list .submenu li a:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  transform: translateX(4px);
+}
+
+.menu-list .submenu li a.active {
+  background: linear-gradient(145deg, #0078ff, #005bbf);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+/* Submenu transitions */
+.menu-list .submenu.collapsed {
+  max-height: 0;
+  opacity: 0;
+}
+
+.menu-list .submenu.expanded {
+  max-height: 1000px;
+  opacity: 1;
+}
+
+/* Arrow indicators */
+.submenu-arrow {
+  font-size: 0.8rem;
+  opacity: 0.8;
+  transition: transform 0.2s ease;
+}
+
+.menu-list li button.active .submenu-arrow {
+  transform: rotate(90deg);
+  opacity: 1;
+}

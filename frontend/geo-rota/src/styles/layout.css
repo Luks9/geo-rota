@@ -1,0 +1,44 @@
+.app-shell {
+  min-height: 100vh;
+  background-color: #f5f6fa;
+}
+
+.app-main {
+  margin-left: 205px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 0 1rem 1.5rem;
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 900;
+  margin: 0.15rem 0 1rem;
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+}
+
+.topbar.navbar {
+  min-height: auto;
+  border-radius: 10px;
+}
+
+.topbar .navbar-item,
+.topbar .navbar-link {
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+}
+
+.app-content {
+  flex: 1;
+}
+
+.app-content .section {
+  padding: 1.75rem 1.5rem 2rem;
+}
+
+.modal.is-active {
+  z-index: 1100;
+}
